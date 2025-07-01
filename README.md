@@ -2,12 +2,49 @@
 # Lecturer: Jin Qi
 这是人工智能课程相关信息的展示平台
 
-Absolutely! Here’s a **project plan for a semester/quarter**, organized as **weekly assignments**—each aligned to one or two AIMA chapters and mapped to a key image fusion concept, with **minimal code demo**, **mathematical explanation prompt**, and a **sample writeup template** for students.
+Here’s a **project plan for a semester**, organized as **weekly assignments**—each aligned to one or two AIMA chapters and mapped to a key image fusion concept, with **minimal code demo**, **mathematical explanation prompt**, and a **sample writeup template** for students.
+
 The goal:
 
 * Students understand and run each code snippet.
 * For each algorithm, they explain the *underlying math* (e.g., formula, search tree, probability equation) and relate it to the code.
 * They complete a short written report using a unified template.
+
+
+---
+
+# 📝 **Sample Student Writeup Template**
+
+---
+
+**Assignment Week X: \[Topic, e.g., Search or Deep Learning]**
+
+1. **Code Output (screenshot or copy):**
+
+   ```
+   [Paste output or screenshot here]
+   ```
+
+2. **Math Explanation:**
+
+   * *Write the relevant algorithm mathematically:*
+   * \[E.g.,\* “Entropy: $H(X) = -\sum_x P(x)\log_2 P(x)$”\*]
+   * *Describe how the code implements this.*
+
+3. **Reflection:**
+
+   * *What did you learn? How does the AI method relate to the fusion problem?*
+   * *Where else might you apply this idea?*
+
+---
+
+# ⭐️ **How to Use**
+
+* Each week: students **run, understand, and explain** a concept from both code and math.
+* The template ensures students connect **AIMA theory → algorithm → code → application**.
+* You may expand each into full lab, homework, or as part of a capstone project.
+
+---
 
 ---
 
@@ -32,7 +69,7 @@ The goal:
    ```
 2. **Mathematical prompt:**
 
-   * *Describe the agent function $' f: P^\star \rightarrow A $' (where $ P^* $ is the set of percept sequences and $ A $ is the set of actions).*
+   * *Describe the agent function $` f: P^\star \rightarrow A `$ (where $` P^\star `$ is the set of percept sequences and $` A `$ is the set of actions).*
    * *For this agent, what is the mapping in mathematical terms?*
 
 ---
@@ -278,42 +315,8 @@ The goal:
 
 ---
 
----
 
-# 📝 **Sample Student Writeup Template**
 
----
-
-**Assignment Week X: \[Topic, e.g., Search or Deep Learning]**
-
-1. **Code Output (screenshot or copy):**
-
-   ```
-   [Paste output or screenshot here]
-   ```
-
-2. **Math Explanation:**
-
-   * *Write the relevant algorithm mathematically:*
-   * \[E.g.,\* “Entropy: $H(X) = -\sum_x P(x)\log_2 P(x)$”\*]
-   * *Describe how the code implements this.*
-
-3. **Reflection:**
-
-   * *What did you learn? How does the AI method relate to the fusion problem?*
-   * *Where else might you apply this idea?*
-
----
-
-# ⭐️ **How to Use**
-
-* Each week: students **run, understand, and explain** a concept from both code and math.
-* The template ensures students connect **AIMA theory → algorithm → code → application**.
-* You may expand each into full lab, homework, or as part of a capstone project.
-
----
-
-If you want this as a formatted Jupyter notebook with markdown and editable prompts for each week, **just say the word!**
 
 
 
