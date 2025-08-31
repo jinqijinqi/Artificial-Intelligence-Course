@@ -61,15 +61,11 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 
 * **距离公式**（欧氏距离，两个特征）：
 
-  $$
-  d = \sqrt{(IR_{mean}^{(test)} - IR_{mean}^{(i)})^2 + (VIS_{mean}^{(test)} - VIS_{mean}^{(i)})^2}
-  $$
+  $$d = \sqrt{(IR_{mean}^{(test)} - IR_{mean}^{(i)})^2 + (VIS_{mean}^{(test)} - VIS_{mean}^{(i)})^2}$$
 * **kNN判决规则：**
   设 $X_{test}$ 为新样本特征，则预测标签为 $y_{i^*}$：
 
-  $$
-  i^* = \arg\min_i d(X_{test}, X_i)
-  $$
+  $$i^* = \arg\min_i d(X_{test}, X_i)$$
 
   对于 $k=1$，选与新样本距离最近的训练样本的类别作为预测。
 
@@ -89,8 +85,9 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 
 * 计算距离如下：
 
-  * 到\[0.7, 0.4]的距离 = sqrt((0.6-0.7)^2 + (0.5-0.4)^2) ≈ 0.14
-  * 到\[0.3, 0.8]的距离 = sqrt((0.6-0.3)^2 + (0.5-0.8)^2) ≈ 0.42
+  * 到\[0.7, 0.4]的距离 = $sqrt((0.6-0.7)^2 + (0.5-0.4)^2) ≈ 0.14$
+  * 到\[0.3, 0.8]的距离 = $sqrt((0.6-0.3)^2 + (0.5-0.8)^2) ≈ 0.42$
+    
     分类器正确预测为标签0（平均融合）。
 * 该实验说明，即使是简单的kNN方法，只要特征设计合理，也能自动完成融合方法的决策。
 
@@ -165,16 +162,12 @@ The kNN algorithm predicts the label for a new data point by finding the closest
 
 * **Distance formula** (Euclidean distance for two features):
 
-  $$
-  d = \sqrt{(IR_{mean}^{(test)} - IR_{mean}^{(i)})^2 + (VIS_{mean}^{(test)} - VIS_{mean}^{(i)})^2}
-  $$
+  $$d = \sqrt{(IR_{mean}^{(test)} - IR_{mean}^{(i)})^2 + (VIS_{mean}^{(test)} - VIS_{mean}^{(i)})^2}$$
 * **kNN prediction rule:**
   Let $X_{test}$ be the new patch feature.
   The predicted label is $y_{i^*}$, where
 
-  $$
-  i^* = \arg\min_i d(X_{test}, X_i)
-  $$
+  $$i^* = \arg\min_i d(X_{test}, X_i)$$
 
   For $k=1$, we select the single closest training sample.
 
@@ -194,8 +187,8 @@ Predicted fusion method: 0 (0: average, 1: max)
 
 * The result is consistent with the mathematical expectation:
 
-  * Distance to \[0.7, 0.4] = sqrt((0.6-0.7)^2 + (0.5-0.4)^2) = sqrt(0.01 + 0.01) = sqrt(0.02) ≈ 0.14
-  * Distance to \[0.3, 0.8] = sqrt((0.6-0.3)^2 + (0.5-0.8)^2) = sqrt(0.09 + 0.09) = sqrt(0.18) ≈ 0.42
+  * Distance to \[0.7, 0.4] = $sqrt((0.6-0.7)^2 + (0.5-0.4)^2) = sqrt(0.01 + 0.01) = sqrt(0.02) ≈ 0.14$
+  * Distance to \[0.3, 0.8] = $sqrt((0.6-0.3)^2 + (0.5-0.8)^2) = sqrt(0.09 + 0.09) = sqrt(0.18) ≈ 0.42$
     So, the classifier correctly predicts 0 (average fusion).
 * This demonstrates that even a simple kNN can automate fusion method selection when given appropriate features and labels.
 
