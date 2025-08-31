@@ -263,7 +263,7 @@ This approach could be extended to more complex fusion tasks, or even as a first
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
 
-7. (第七周周四截止） Homework 7--唐诗宋词GPT!<br/>
+7. (Due Thursday of Week 7） Homework 7--Chinese Poem GPT (brief description)!<br/>
    [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
 
