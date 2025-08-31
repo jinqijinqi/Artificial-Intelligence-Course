@@ -16,6 +16,8 @@
 
 # 人工智能作业报告模板
 
+* **课程：** 人工智能基础
+* **学院：** 信息与通信工程（学生所在学院）
 * **姓名：** 张三
 * **学号：** 2023123456
 * **作业题目：** 第8周：实例学习——kNN图像融合方法选择
@@ -117,6 +119,8 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 
 # Artificial Intelligence Assignment Report Template
 
+* **course：** Foundation of Artificial Intelligence
+* **school：** Information and Communication Engineering(student's school)
 * **Name:** Alice Smith
 * **Student ID:** 2023123456
 * **Assignment Title:** Week 8: Learning from Examples — kNN Fusion Method Selection
