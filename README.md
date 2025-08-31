@@ -209,7 +209,7 @@ This approach could be extended to more complex fusion tasks, or even as a first
 ---
 
 
-# 所有作业（作业1，2，3，7必做，作业4，5，6可以选一个，但鼓励大家都选）
+# 所有作业（作业1，2，3，7，8必做，作业4，5，6必选一个，但鼓励大家都选）
 1. (第二周周四截止）Homework 1--Pytorch Installation 简述!<br/>
    [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/get-started/locally/)<br/>
@@ -237,7 +237,7 @@ This approach could be extended to more complex fusion tasks, or even as a first
 
 ---
 
-# All Homework (Homework 1, 2, 3, 7 are required; Homework 4, 5, 6 you can choose one, but all are encouraged)
+# All Homework (Homework 1, 2, 3, 7，8 are required; Homework 4, 5, 6 you have to choose one, but all are encouraged)
 
 1. (Due Thursday of Week 2) Homework 1 -- PyTorch Installation (brief description)!<br/>
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
