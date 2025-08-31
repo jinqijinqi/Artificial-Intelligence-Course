@@ -228,7 +228,10 @@ This approach could be extended to more complex fusion tasks, or even as a first
 6. (第六周周四截止） Homework 6--文本识别简述内容!<br/>
    [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
-7. (第八周周四截止） Homework 7--Mario play agent简述!<br/>
+7. (第七周周四截止） Homework 7--唐诗宋词GPT!<br/>
+   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
+8. (第八周周四截止） Homework 8--Mario play agent简述!<br/>
    [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/intermediate/mario_rl_tutorial.html)<br/>
 
@@ -260,7 +263,11 @@ This approach could be extended to more complex fusion tasks, or even as a first
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
 
-7. (Due Thursday of Week 8) Homework 7 -- Mario play agent (brief description)!<br/>
+7. (第七周周四截止） Homework 7--唐诗宋词GPT!<br/>
+   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
+
+8. (Due Thursday of Week 8) Homework 7 -- Mario play agent (brief description)!<br/>
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/intermediate/mario_rl_tutorial.html)<br/>
 
