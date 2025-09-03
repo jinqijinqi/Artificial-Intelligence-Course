@@ -210,6 +210,7 @@ This approach could be extended to more complex fusion tasks, or even as a first
 ## 课堂及课后作业
 
 # 1. 2-1-learning1-w1-2
+[参考代码](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/1-introduction-w1-1-pytorch-code.zip)
 
  # 1) 线性回归 · 课堂版
 
@@ -217,9 +218,6 @@ This approach could be extended to more complex fusion tasks, or even as a first
 * 数据： $(-2,0),(-1,0.5),(0,1),(1,1.5),(2,2)$（即 $y=1+0.5x$）
 * 损失： $\frac1n\sum(f_w(x)-y)^2$
 * 训练：批量梯度下降（SGD 优化器）
-
-**下载脚本：**
-[regression\_classroom.py](sandbox:/mnt/data/regression_classroom.py)
 
 **运行：**
 
@@ -241,9 +239,6 @@ python regression_classroom.py
 * 数据（严格同 PDF）：$[0,2]\to +1,\ [-2,0]\to +1,\ [1,-1]\to -1$
 * 打分：$s(x)=w^\top\phi(x)$，预测 $\mathrm{sign}(s)$
 * 损失：$\frac1n\sum\max(0,1-y\,s)$
-
-**下载脚本：**
-[classification\_classroom.py](sandbox:/mnt/data/classification_classroom.py)
 
 **运行：**
 
@@ -269,9 +264,6 @@ python classification_classroom.py
   1. 在相同轮数下，画损失关于学习率的曲线，讨论学习率对收敛的影响（较小/较大对比）
   2. 在相同学习率下，画损失关于迭代轮数的曲线，讨论迭代轮数对收敛的影响
 
-**下载脚本：**
-[regression\_homework.py](sandbox:/mnt/data/regression_homework.py)
-
 **运行示例：**
 
 ```bash
@@ -288,9 +280,6 @@ python regression_homework.py --lr 0.05 --epochs 500
 
   1. 在相同轮数下，画损失关于学习率的曲线，讨论学习率对收敛的影响（较小/较大对比）
   2. 在相同学习率下，画损失关于迭代轮数的曲线，讨论迭代轮数对收敛的影响
-
-**下载脚本：**
-[classification\_homework.py](sandbox:/mnt/data/classification_homework.py)
 
 **运行示例：**
 
