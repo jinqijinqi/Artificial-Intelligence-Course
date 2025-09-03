@@ -206,7 +206,100 @@ The exercise also made me realize that, while kNN is very intuitive and easy to 
 
 This approach could be extended to more complex fusion tasks, or even as a first step before using deep learning methods. It also showed me the importance of explainable, reproducible AI pipelines in scientific and engineering applications.
 
+---------------------------
+## 课堂及课后作业
+
+# 1. 2-1-learning1-w1-2
+
+ # 1) 线性回归 · 课堂版
+
+* 模型： $f_w(x)=w^T[1,x]$ 
+* 数据： $(-2,0),(-1,0.5),(0,1),(1,1.5),(2,2)$（即 $y=1+0.5x$）
+* 损失： $\frac1n\sum(f_w(x)-y)^2$
+* 训练：批量梯度下降（SGD 优化器）
+
+**下载脚本：**
+[regression\_classroom.py](sandbox:/mnt/data/regression_classroom.py)
+
+**运行：**
+
+```bash
+python regression_classroom.py
+```
+
+**期望输出（示例）：**
+
+* 学到的权重 $w=[w_1,w_2]\approx[1.0,0.5]$
+* 训练 MSE 接近 0
+* 对训练点的预测与真值一致
+
 ---
+
+## 2) 线性分类 · 课堂版（合页损失）
+
+* 特征：$\phi(x)=[x_1,x_2]$（无偏置）
+* 数据（严格同 PDF）：$[0,2]\to +1,\ [-2,0]\to +1,\ [1,-1]\to -1$
+* 打分：$s(x)=w^\top\phi(x)$，预测 $\mathrm{sign}(s)$
+* 损失：$\frac1n\sum\max(0,1-y\,s)$
+
+**下载脚本：**
+[classification\_classroom.py](sandbox:/mnt/data/classification_classroom.py)
+
+**运行：**
+
+```bash
+python classification_classroom.py
+```
+
+**期望输出（示例）：**
+
+* 学到的权重 $w$ 能让三点全部间隔 $\ge 1$，训练合页损失 $\to 0$
+* 训练集预测为 $[+1,+1,-1]$，精度 100%
+
+---
+
+# 课后练习（可调学习率/轮数，便于做实验报告）
+
+## 3) 线性回归 · 课后版
+
+* 与课堂版相同数学设定
+* **命令行参数**：`--lr` 学习率，`--epochs` 轮数
+* 任务：
+
+  1. 在相同轮数下，画损失关于学习率的曲线，讨论学习率对收敛的影响（较小/较大对比）
+  2. 在相同学习率下，画损失关于迭代轮数的曲线，讨论迭代轮数对收敛的影响
+
+**下载脚本：**
+[regression\_homework.py](sandbox:/mnt/data/regression_homework.py)
+
+**运行示例：**
+
+```bash
+python regression_homework.py --lr 0.05 --epochs 500
+```
+
+---
+
+## 4) 线性分类 · 课后版（合页损失）
+
+* 
+* **命令行参数**：`--lr` 学习率，`--epochs` 轮数
+* 任务建议：
+
+  1. 在相同轮数下，画损失关于学习率的曲线，讨论学习率对收敛的影响（较小/较大对比）
+  2. 在相同学习率下，画损失关于迭代轮数的曲线，讨论迭代轮数对收敛的影响
+
+**下载脚本：**
+[classification\_homework.py](sandbox:/mnt/data/classification_homework.py)
+
+**运行示例：**
+
+```bash
+python classification_homework.py --lr 0.2 --epochs 200
+```
+
+
+
 
 
 # 所有作业（作业1，2，3，7，8必做，作业4，5，6必选一个，但鼓励大家都选）
