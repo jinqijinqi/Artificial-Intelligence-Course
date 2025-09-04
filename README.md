@@ -219,6 +219,9 @@ This approach could be extended to more complex fusion tasks, or even as a first
 * 损失： $\frac1n\sum(f_w(x)-y)^2$
 * 训练：批量梯度下降（SGD 优化器）
 
+**任务:**
+写出总损失函数和相应的梯度下降迭代公式
+
 **运行：**
 
 ```bash
@@ -235,10 +238,13 @@ python regression_classroom.py
 
 ## 2) 线性分类 · 课堂版（合页损失）
 
-* 特征：$\phi(x)=[x_1,x_2]$（无偏置）
-* 数据（严格同 PDF）：$[0,2]\to +1,\ [-2,0]\to +1,\ [1,-1]\to -1$
-* 打分：$s(x)=w^\top\phi(x)$，预测 $\mathrm{sign}(s)$
-* 损失：$\frac1n\sum\max(0,1-y\,s)$
+* 特征： $\phi(x)=[x_1,x_2]$ （无偏置）
+* 数据（严格同 PDF）： $[0,2]\to +1,\ [-2,0]\to +1,\ [1,-1]\to -1$
+* 打分： $s(x)=w^\top\phi(x)$， 预测  $\mathrm{sign}(s)$
+* 损失： $\frac1n\sum\max(0,1-y\,s)$
+
+**任务:**
+写出总损失函数和相应的梯度下降迭代公式
 
 **运行：**
 
