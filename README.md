@@ -318,6 +318,108 @@ if __name__ == "__main__":
     print("final loss =", hist[-1])
 ```
 
+## **Week 2：机器学习2**
+
+## 课堂练习
+
+1. ## 线性回归的 SGD vs GD（含二次特征微步）
+
+**手算数据**  $(1,1),(2,3),(4,3)$, $\phi(x)=[1,x]$ ，步长 $\eta=0.1$ 。  
+1) **GD 一步**：从 $w^{(0)}=[0,0]$ 计算梯度并更新 $w^{(1)}$。  
+2) **SGD 两步**：按 (1,1) → (2,3) 顺序，从 $w^{(0)}$ 依次更新。  
+3) **二次特征微步**：$\phi_2(x)=[1,x,x^2]$。在样本 (1,1) 上、从 $w=[0,0,0]$、$\eta=0.1$ 进行一次 SGD 更新。
+
+**提交**：关键公式与数值（保留两位小数）。
+
+## 课后练习 — 同题的程序实现
+
+**A 部分 — GD / SGD / 小批量**  
+实现 `fit_linear(X,y, method, lr, epochs, batch_size, lr_schedule)`：
+- `method ∈ {gd, sgd, minibatch}`；`lr_schedule ∈ {constant, sqrt_decay}`（$\eta_t=\eta_0/\sqrt{t}$）。
+- 在 `data/regression_nonlinear.csv` 上，分别用 $\phi=[1,x]$ 与 $\phi_2=[1,x,x^2]$ 比较速度、达到目标损失的轮数、以及最终 MSE。
+
+**B 部分 — 非线性特征**  
+实现二次多项式、5 分箱、余弦特征；比较 MSE。
+
+**C（可选）— 两层 ReLU 网络**  
+在 `data/classification_xor.csv` 上训练小型两层网，达到 100% 训练精度。
+
+**评分（基础/挑战）**：正确性 60，工程 20，分析 20。
+
+
+## 参考代码— 同题的程序实现
+ref_classification.py
+
+```python
+
+import numpy as np
+
+def fit_hinge_gd(X, y, lr=0.1, epochs=200, l2=0.0):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    hist = []
+    for _ in range(epochs):
+        margins = (X @ w) * y
+        # subgradient: average over samples
+        mask = margins < 1.0
+        grad = -(X[mask].T @ y[mask]) / n + l2 * w
+        # hinge loss value
+        loss = np.maximum(1 - margins, 0).mean() + 0.5*l2*np.dot(w,w)
+        w -= lr * grad
+        hist.append(loss)
+    # 0-1 accuracy
+    acc = (np.sign(X@w) == y).mean()
+    return w, np.array(hist), acc
+
+if __name__ == "__main__":
+    # Toy points from slides
+    X = np.array([[0.0, 2.0],
+                  [-2.0, 0.0],
+                  [1.0, -1.0]])
+    y = np.array([+1, +1, -1])
+    w, hist, acc = fit_hinge_gd(X, y, lr=0.1, epochs=50)
+    print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
+
+···
+
+ref_regression.py
+
+```python
+import numpy as np
+
+def add_bias(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x])
+
+def fit_linear_gd(X, y, lr=0.1, epochs=200):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    hist = []
+    for _ in range(epochs):
+        pred = X @ w
+        err = pred - y
+        loss = (err**2).mean()
+        grad = (2.0/n) * (X.T @ err)
+        w -= lr * grad
+        hist.append(loss)
+    return w, np.array(hist)
+
+if __name__ == "__main__":
+    # Toy dataset from slides
+    x = np.array([1.0, 2.0, 4.0])
+    y = np.array([1.0, 3.0, 3.0])
+    X = add_bias(x)
+    w, hist = fit_linear_gd(X, y, lr=0.1, epochs=200)
+    print("w* =", w)
+    print("final loss =", hist[-1])
+```
+
+
+
+
+
  # 1) 线性回归 · 课堂版
 
 * 模型： $f_w(x)=w^T[1,x]$ 
