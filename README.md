@@ -1,6 +1,6 @@
 # UESTC Artificial Intelligence Course (2025-2026)
 # Lecturer: Jin Qi
-这是人工智能课程相关信息的展示平台
+# You are welcome!
 
 ---
 
@@ -14,7 +14,7 @@
 
 ---
 
-# 人工智能作业报告模板
+# 《人工智能入门》“kNN图像融合方法选择” 实验报告范例
 
 * **课程：** 人工智能基础
 * **学院：** 信息与通信工程（学生所在学院）
@@ -207,10 +207,112 @@ The exercise also made me realize that, while kNN is very intuitive and easy to 
 This approach could be extended to more complex fusion tasks, or even as a first step before using deep learning methods. It also showed me the importance of explainable, reproducible AI pipelines in scientific and engineering applications.
 
 ---------------------------
+下面是**严格按照《Artificial Intelligence: A Modern Approach》经典教材章节**编排的**周项目/作业清单与模板**。每周作业包含**姓名、学号、实验题目、实验内容（代码）、数学推导（公式/理论）、实验结果、分析与总结**等模块，适合标准本科/研究生人工智能入门课程教学。
+-----
+## 📙[请下载作业空模板.docx](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx) <br/>
+
 ## 课堂及课后作业
 
-# 1. 2-1-learning1-w1-2
-[参考代码](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/1-introduction-w1-1-pytorch-code.zip)
+## **Week 1：机器学习1（回归与分类）**
+
+## 课堂练习
+
+1. **（线性回归，平方损失，GD 1 步）**  
+数据集 $(x,y)\in\{(1,1),(2,3),(4,3)\}$，$\phi(x)=[1,x]$，初始 $w^{(0)}=[0,0]$，步长 $\eta=0.1$。  
+1) 计算 $\nabla \text{TrainLoss}(w^{(0)})$。  
+2) 更新 $w^{(1)}=w^{(0)}-\eta\nabla \text{TrainLoss}(w^{(0)})$。  
+3)（若时间允许）算 $\nabla\text{TrainLoss}(w^{(1)})$ 与 $w^{(2)}$。
+
+2. **（线性分类，合页损失，次梯度 1 步）**  
+样本 $(x,y)\in\{([0,2],+1),([-2,0],+1),([1,-1],-1)\}$，$\phi(x)=[x_1,x_2]$，当前 $w=[0.5,1.0]$。  
+1) 分别计算每个样本的合页损失与次梯度。  
+2) 求平均得到训练损失的（次）梯度；解释为何有的为 0。  
+3)（可选）用 $\eta=0.1$ 做一次更新。  
+**提交**：关键式子 + 数值结果（保留两位小数）。
+
+## 课后练习 — 同题的程序实现
+
+1. **（线性回归：平方损失 + GD/SGD）**  
+- 实现 `fit_linear_gd(X, y, lr=0.1, epochs=200)`（$\phi(x)=[1,x]$ 或通用 $\phi$）。  
+- 打印/绘制训练损失曲线；报告最终 $w$。  
+**基础**：在 `data/regression_toy.csv` 与参考一致。  
+**挑战**：加入 SGD（或小批）并比较与 GD 的速度。
+
+2. **（线性分类：合页损失的次梯度）**  
+- 实现 `fit_hinge_gd(X, y, lr=0.1, epochs=200)`；标签取 $\{\pm1\}$。  
+- 报告训练合页损失与 0–1 准确率。  
+**基础**：在 `data/classification_toy.csv` 上与参考一致。  
+**挑战**：加入 L2 正则并分析边际分布。
+
+**提交**：代码 + 简短报告（≤1 页）含曲线/表格。  
+**评分（基础/挑战）**：正确性 60，工程 20，分析 20。
+
+# 参考代码— 同题的程序实现
+ref_classification.py
+
+···
+
+import numpy as np
+
+def fit_hinge_gd(X, y, lr=0.1, epochs=200, l2=0.0):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    hist = []
+    for _ in range(epochs):
+        margins = (X @ w) * y
+        # subgradient: average over samples
+        mask = margins < 1.0
+        grad = -(X[mask].T @ y[mask]) / n + l2 * w
+        # hinge loss value
+        loss = np.maximum(1 - margins, 0).mean() + 0.5*l2*np.dot(w,w)
+        w -= lr * grad
+        hist.append(loss)
+    # 0-1 accuracy
+    acc = (np.sign(X@w) == y).mean()
+    return w, np.array(hist), acc
+
+if __name__ == "__main__":
+    # Toy points from slides
+    X = np.array([[0.0, 2.0],
+                  [-2.0, 0.0],
+                  [1.0, -1.0]])
+    y = np.array([+1, +1, -1])
+    w, hist, acc = fit_hinge_gd(X, y, lr=0.1, epochs=50)
+    print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
+
+···
+ref_regression.py
+```
+import numpy as np
+
+def add_bias(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x])
+
+def fit_linear_gd(X, y, lr=0.1, epochs=200):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    hist = []
+    for _ in range(epochs):
+        pred = X @ w
+        err = pred - y
+        loss = (err**2).mean()
+        grad = (2.0/n) * (X.T @ err)
+        w -= lr * grad
+        hist.append(loss)
+    return w, np.array(hist)
+
+if __name__ == "__main__":
+    # Toy dataset from slides
+    x = np.array([1.0, 2.0, 4.0])
+    y = np.array([1.0, 3.0, 3.0])
+    X = add_bias(x)
+    w, hist = fit_linear_gd(X, y, lr=0.1, epochs=200)
+    print("w* =", w)
+    print("final loss =", hist[-1])
+```
 
  # 1) 线性回归 · 课堂版
 
