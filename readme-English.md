@@ -13,7 +13,7 @@
 
 ---
 
-# Artificial Intelligence Assignment Report Template
+# Artificial Intelligence Assignment Report Example(Template) 
 
 * **course：** Foundation of Artificial Intelligence
 * **school：** Information and Communication Engineering(student's school)
@@ -103,8 +103,222 @@ The exercise also made me realize that, while kNN is very intuitive and easy to 
 This approach could be extended to more complex fusion tasks, or even as a first step before using deep learning methods. It also showed me the importance of explainable, reproducible AI pipelines in scientific and engineering applications.
 
 ---
+# Weekly homework(**Submission**: paper version of short report with curves/tables) (implemented by python) (due to the next class in next week)
+## [Download empty report template here](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
 
-# All Homework (Homework 1, 2, 3, 7，8 are required; Homework 4, 5, 6 you have to choose one, but all are encouraged)
+## Week 1. (2-1-learning1-w1-2)
+**Part R1 — Linear regression (squared loss + GD/SGD)**  
+- Implement `fit_linear_gd(X, y, lr=0.1, epochs=200)` where $\phi(x)=[1,x]$ or general $\phi$.  
+- Plot/print loss over epochs; report final $w$.  
+**Base**: matches reference on `data/regression_toy.csv`.  
+**Challenge**: add SGD (minibatch) and compare speed vs GD.
+
+**Reference codes:***
+ref_regression.py
+```python
+import numpy as np
+
+def add_bias(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x])
+
+def fit_linear_gd(X, y, lr=0.1, epochs=200):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    hist = []
+    for _ in range(epochs):
+        pred = X @ w
+        err = pred - y
+        loss = (err**2).mean()
+        grad = (2.0/n) * (X.T @ err)
+        w -= lr * grad
+        hist.append(loss)
+    return w, np.array(hist)
+
+if __name__ == "__main__":
+    # Toy dataset from slides
+    x = np.array([1.0, 2.0, 4.0])
+    y = np.array([1.0, 3.0, 3.0])
+    X = add_bias(x)
+    w, hist = fit_linear_gd(X, y, lr=0.1, epochs=200)
+    print("w* =", w)
+    print("final loss =", hist[-1])
+```
+
+**Part C1 — Linear classification (hinge loss subgradient)**  
+- Implement `fit_hinge_gd(X, y, lr=0.1, epochs=200)`; labels in $\{\pm1\}$.  
+- Report train hinge loss and 0–1 accuracy.  
+**Base**: matches reference on `data/classification_toy.csv`.  
+**Challenge**: add L2 regularization.
+
+**Reference codes:***
+ref_classification.py
+
+```python
+import numpy as np
+
+def fit_hinge_gd(X, y, lr=0.1, epochs=200, l2=0.0):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    hist = []
+    for _ in range(epochs):
+        margins = (X @ w) * y
+        # subgradient: average over samples
+        mask = margins < 1.0
+        grad = -(X[mask].T @ y[mask]) / n + l2 * w
+        # hinge loss value
+        loss = np.maximum(1 - margins, 0).mean() + 0.5*l2*np.dot(w,w)
+        w -= lr * grad
+        hist.append(loss)
+    # 0-1 accuracy
+    acc = (np.sign(X@w) == y).mean()
+    return w, np.array(hist), acc
+
+if __name__ == "__main__":
+    # Toy points from slides
+    X = np.array([[0.0, 2.0],
+                  [-2.0, 0.0],
+                  [1.0, -1.0]])
+    y = np.array([+1, +1, -1])
+    w, hist, acc = fit_hinge_gd(X, y, lr=0.1, epochs=50)
+    print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
+
+```
+## Week 2. (2-2learning2-w2-1)
+
+**Part A — GD / SGD / Minibatch**  
+Implement `fit_linear(X,y, method, lr, epochs, batch_size, lr_schedule)` with:
+- `method ∈ {gd, sgd, minibatch}`; `lr_schedule ∈ {constant, sqrt_decay}` ($\eta_t=\eta_0/\sqrt{t}$).
+- Compare speed, epochs-to-target-loss, and final MSE on `data/regression_nonlinear.csv` under $\phi=[1,x]$ vs $\phi_2=[1,x,x^2]$.
+- 
+
+```python
+import time, math
+import numpy as np
+
+def add_bias_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x])
+
+def poly2_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x, x**2])
+
+def loss_mse(X, y, w):
+    err = X @ w - y
+    return float((err**2).mean())
+
+def grad_mse_full(X, y, w):
+    n = X.shape[0]
+    return (2.0/n) * (X.T @ (X@w - y))
+
+def fit_linear(X, y, method="sgd", lr=0.1, epochs=10, batch_size=32, lr_schedule="constant", seed=0):
+    rng = np.random.default_rng(seed)
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape
+    w = np.zeros(d)
+    t_updates = 0
+    losses = []
+
+    for ep in range(epochs):
+        idx = np.arange(n); rng.shuffle(idx)
+        if method == "gd":
+            eta = lr / math.sqrt(max(1, t_updates)) if lr_schedule=="sqrt_decay" else lr
+            g = grad_mse_full(X, y, w)
+            w -= eta * g
+            t_updates += 1
+            losses.append(loss_mse(X, y, w))
+        elif method == "sgd":
+            for i in idx:
+                xi, yi = X[i], y[i]
+                eta = lr / math.sqrt(max(1, t_updates)) if lr_schedule=="sqrt_decay" else lr
+                g = 2.0 * (xi @ w - yi) * xi
+                w -= eta * g
+                t_updates += 1
+            losses.append(loss_mse(X, y, w))
+        else:  # minibatch
+            B = max(1, min(batch_size, n))
+            for k in range(0, n, B):
+                j = idx[k:k+B]
+                Xb, yb = X[j], y[j]
+                eta = lr / math.sqrt(max(1, t_updates)) if lr_schedule=="sqrt_decay" else lr
+                g = (2.0/len(j)) * (Xb.T @ (Xb@w - yb))
+                w -= eta * g
+                t_updates += 1
+            losses.append(loss_mse(X, y, w))
+
+    return w, np.array(losses)
+```
+
+**Part B — Non-linear features**  
+Implement polynomial degree-2, 5-bin piecewise, and cosine features; compare MSE.
+
+```python
+import numpy as np
+
+def phi_linear_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x])
+
+def phi_poly2_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x, x**2])
+
+def phi_bins_1d(x, B=5, lo=0.0, hi=5.0):
+    x = np.asarray(x).reshape(-1)
+    edges = np.linspace(lo, hi, B+1)
+    X = np.zeros((len(x), B))
+    for i, xi in enumerate(x):
+        b = np.searchsorted(edges, xi, side="right") - 1
+        b = min(max(b, 0), B-1)
+        X[i, b] = 1.0
+    return np.hstack([np.ones((len(x),1)), X])
+
+def phi_periodic_1d(x, omega=3.0):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x, x**2, np.cos(omega*x)])
+```
+**Part C  — Two-layer NN**  
+Train a tiny 2-layer ReLU net on `data/classification_xor.csv` to 100% train accuracy.
+
+```python
+import numpy as np
+def relu(z): return np.maximum(z, 0.0)
+def d_relu(z): return (z > 0).astype(float)
+
+class TinyTwoLayer:
+    def __init__(self, d_in, d_h=4, lr=0.1, epochs=200, seed=0):
+        rng = np.random.default_rng(seed)
+        self.W1 = rng.normal(scale=0.5, size=(d_h, d_in)); self.b1 = np.zeros(d_h)
+        self.W2 = rng.normal(scale=0.5, size=(1, d_h));    self.b2 = np.zeros(1)
+        self.lr, self.epochs = lr, epochs
+    def fit(self, X, y):
+        X = np.asarray(X); y = np.asarray(y).reshape(-1)  # {0,1}
+        for _ in range(self.epochs):
+            z1 = X @ self.W1.T + self.b1; h = relu(z1)
+            z2 = h @ self.W2.T + self.b2
+            yhat = 1/(1+np.exp(-z2)).reshape(-1)
+            dz2 = (yhat - y)[:,None]
+            gW2 = dz2.T @ h / len(y); gb2 = dz2.mean(0)
+            dh  = dz2 @ self.W2; dz1 = dh * d_relu(z1)
+            gW1 = dz1.T @ X / len(y); gb1 = dz1.mean(0)
+            self.W2 -= self.lr*gW2; self.b2 -= self.lr*gb2
+            self.W1 -= self.lr*gW1; self.b1 -= self.lr*gb1
+        return self
+    def predict(self, X):
+        z1 = X @ self.W1.T + self.b1; h = relu(z1)
+        z2 = h @ self.W2.T + self.b2
+        yhat = 1/(1+np.exp(-z2)).reshape(-1)
+        return (yhat >= 0.5).astype(int)
+```
+
+
+
+---
+
+# All Projects (Project 1, 2, 3, 7，8 are necessarily required; For project 4, 5, 6,  you have to choose one, but all are encouraged)
 
 1. (Due Thursday of Week 2) Homework 1 -- PyTorch Installation (brief description)!<br/>
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
