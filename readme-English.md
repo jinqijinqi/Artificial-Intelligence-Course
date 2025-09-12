@@ -2,8 +2,19 @@
 # Lecturer: Jin Qi
 # You are welcome!
 ---
+**Grading:**
 
-## **Instructor's  Grading:**
+Seminar (10%): Digits Recognition, Poetry GPT
+
+In-Class Excercise (30%)
+
+After-Class Homework (40%)
+
+Projects (20%)
+
+
+
+## **Report  Grading:**
 
 * Mathematical formulation: clear, correct (20)
 * Code: runs, documented, reproducible (20)
@@ -191,8 +202,9 @@ if __name__ == "__main__":
 **Part A — GD / SGD / Minibatch**  
 Implement `fit_linear(X,y, method, lr, epochs, batch_size, lr_schedule)` with:
 - `method ∈ {gd, sgd, minibatch}`; `lr_schedule ∈ {constant, sqrt_decay}` ($\eta_t=\eta_0/\sqrt{t}$).
-- Compare speed, epochs-to-target-loss, and final MSE on `data/regression_nonlinear.csv` under $\phi=[1,x]$ vs $\phi_2=[1,x,x^2]$.
-- 
+- Compare speed, epochs-to-target-loss, and final MSE on [`regression_nonlinear.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/regression_nonlinear.csv) under $\phi=[1,x]$ vs $\phi_2=[1,x,x^2]$.
+
+(Note: you need to load the data file `regression_nonlinear.csv`) 
 
 ```python
 import time, math
@@ -255,6 +267,8 @@ def fit_linear(X, y, method="sgd", lr=0.1, epochs=10, batch_size=32, lr_schedule
 **Part B — Non-linear features**  
 Implement polynomial degree-2, 5-bin piecewise, and cosine features; compare MSE.
 
+(Note: you need to load the data file `regression_nonlinear.csv`) 
+
 ```python
 import numpy as np
 
@@ -281,7 +295,9 @@ def phi_periodic_1d(x, omega=3.0):
     return np.hstack([np.ones_like(x), x, x**2, np.cos(omega*x)])
 ```
 **Part C  — Two-layer NN**  
-Train a tiny 2-layer ReLU net on `data/classification_xor.csv` to 100% train accuracy.
+Train a tiny 2-layer ReLU net on [`classification_xor.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/classification_xor.csv) to 100% train accuracy.
+
+(Note: you need to load the data file `classification_xor.csv`) 
 
 ```python
 import numpy as np
@@ -318,7 +334,7 @@ class TinyTwoLayer:
 
 ---
 
-# All Projects (Project 1, 2, 3, 7，8 are necessarily required; For project 4, 5, 6,  you have to choose one, but all are encouraged)
+# All Projects (Project 1, 2, 3, 7 are necessarily required; Others are encouraged)
 
 1. (Due Thursday of Week 2) Homework 1 -- PyTorch Installation (brief description)!<br/>
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
@@ -345,7 +361,7 @@ class TinyTwoLayer:
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
 
 7. (Due Thursday of Week 7） Homework 7--Chinese Poem GPT (brief description)!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
 
 8. (Due Thursday of Week 8) Homework 7 -- Mario play agent (brief description)!<br/>
