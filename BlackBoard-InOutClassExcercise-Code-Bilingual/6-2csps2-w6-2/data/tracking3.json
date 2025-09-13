@@ -1,0 +1,31 @@
+{
+  "variables": [
+    "X1",
+    "X2",
+    "X3"
+  ],
+  "domains": {
+    "X1": [
+      0,
+      1,
+      2
+    ],
+    "X2": [
+      0,
+      1,
+      2
+    ],
+    "X3": [
+      0,
+      1,
+      2
+    ]
+  },
+  "observations": {
+    "X1": 0,
+    "X2": 2,
+    "X3": 2
+  },
+  "obs_factor": "O_i(x)=max(0,2-|x-o_i|) -> values in {0,1,2}",
+  "trans_factor": "T(x,y)=2 if x==y; 1 if |x-y|==1; else 0"
+}

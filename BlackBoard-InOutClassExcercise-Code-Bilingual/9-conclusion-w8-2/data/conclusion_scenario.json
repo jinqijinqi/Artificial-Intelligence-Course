@@ -1,0 +1,17 @@
+{
+  "scenario": "CampusBot",
+  "subtasks": [
+    "crosswalk_detection",
+    "route_planning",
+    "stochastic_travel",
+    "pedestrian_tracking",
+    "rules_compliance"
+  ],
+  "ethics_axes": [
+    "data",
+    "objective",
+    "inequality",
+    "harm",
+    "IA"
+  ]
+}

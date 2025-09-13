@@ -1,0 +1,19 @@
+{
+  "constants": [
+    "alice",
+    "bob",
+    "cs221",
+    "mdp"
+  ],
+  "predicates": [
+    "Takes(x,y)",
+    "Course(y)",
+    "Covers(y,z)",
+    "Knows(x,z)"
+  ],
+  "horn_rule": "\u2200x\u2200y\u2200z (Takes(x,y) \u2227 Covers(y,z)) \u2192 Knows(x,z)",
+  "facts": [
+    "Takes(alice, cs221)",
+    "Covers(cs221, mdp)"
+  ]
+}

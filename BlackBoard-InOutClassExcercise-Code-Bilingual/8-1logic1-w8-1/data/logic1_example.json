@@ -1,0 +1,19 @@
+{
+  "atoms": [
+    "Rain",
+    "Wet",
+    "Slippery",
+    "Snow"
+  ],
+  "KB": [
+    "Rain",
+    "Rain -> Wet",
+    "Wet -> Slippery"
+  ],
+  "class_queries": [
+    "Wet",
+    "Rain -> Slippery",
+    "\u00acRain",
+    "Snow"
+  ]
+}

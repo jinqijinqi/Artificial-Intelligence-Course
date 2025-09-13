@@ -1,0 +1,36 @@
+{
+  "HMM_domain": [
+    0,
+    1,
+    2
+  ],
+  "prior": "uniform",
+  "transition": {
+    "same": 0.5,
+    "neighbor": 0.25,
+    "else": 0.0
+  },
+  "emission": {
+    "same": 0.5,
+    "neighbor": 0.25,
+    "else": 0.0
+  },
+  "evidence": [
+    0,
+    2,
+    2
+  ],
+  "medical_BN": {
+    "vars": [
+      "C",
+      "A",
+      "H",
+      "I"
+    ],
+    "edges": [
+      "C->H",
+      "A->H",
+      "A->I"
+    ]
+  }
+}
