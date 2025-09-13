@@ -114,40 +114,35 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 
 ## 课堂练习
 
-1. **（线性回归，平方损失，GD 1 步）**  
-  数据集 $(x,y)\in\{(1,1),(2,3),(4,3)\}$ ， $\phi(x)=[1,x]$ ，初始  $w^{(0)} =[0,0]$ ，步长  $\eta=0.1$ 。
+**R1（线性回归，平方损失，GD 1 步）**  
+数据集 $(x,y)\in\{(1,1),(2,3),(4,3)\}$, $\phi(x)=[1, x]$, 初始 $w^{(0)}=[0, 0]$，步长 $\eta=0.1$。  
+1) 计算 $\nabla \text{TrainLoss}(w^{(0)})$。  
+2) 更新 $w^{(1)}=w^{(0)}-\eta\nabla \text{TrainLoss}(w^{(0)})$。
+3) 算 $\nabla\text{TrainLoss}(w^{(1)})$ 与 $w^{(2)}$。
 
-   1) 计算 $\nabla \text{TrainLoss}(w^{(0)})$。
+**C1（线性分类，合页损失，次梯度 1 步）**  
+样本 $(x,y)\in\{([0,2],+1),([-2,0],+1),([1,-1],-1)\}$, $\phi(x)=[x_1,x_2]$, 当前 $w=[0.5,1.0]$。  
+1) 分别计算每个样本的合页损失与次梯度。  
+2) 求平均得到训练损失的（次）梯度；解释为何有的为 0。
+3) 用 $\eta=0.1$ 做一次更新。  
 
-   2) 更新 $w^{(1)}=w^{(0)}-\eta\nabla \text{TrainLoss}(w^{(0)})$ 。
-   3) 算  $\nabla\text{TrainLoss}(w^{(1)})$ 与  $w^{(2)}$ 。
+## 课后练习
 
-2. **（线性分类，合页损失，次梯度 1 步）**  
-样本 $(x,y)\in\{([0,2],+1),([-2,0],+1),([1,-1],-1)\}$ ，  $\phi(x)=[x_1,x_2]$ ，当前 $w=[0.5,1.0]$ 。  
-   1)  分别计算每个样本的合页损失与次梯度。
-   2)  求平均得到训练损失的（次）梯度；解释为何有的为 0。
-   3)  用 $\eta=0.1$ 做一次更新。  
-**提交**：关键式子 + 数值结果（保留两位小数）。
-
-## 课后练习 — 同题的程序实现
-
-1. **（线性回归：平方损失 + GD/SGD）**  
-- 实现 `fit_linear_gd(X, y, lr=0.1, epochs=200)`（$\phi(x)=[1,x]$ 或通用 $\phi$ ）。  
+**R1（线性回归：平方损失 + GD/SGD）**  
+- 实现 `fit_linear_gd(X, y, lr=0.1, epochs=200)` ($\phi(x)=[1,x]$ 或通用 $\phi$)。  
 - 打印/绘制训练损失曲线；报告最终 $w$。  
-**基础**：与参考一致。  
+**基础**：在 [`data/regression_toy.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-1-learning1-w1-2/data/regression_toy.csv) 上与参考一致。  
 **挑战**：加入 SGD（或小批）并比较与 GD 的速度。
 
-2. **（线性分类：合页损失的次梯度）**  
+**C1（线性分类：合页损失的次梯度）**  
 - 实现 `fit_hinge_gd(X, y, lr=0.1, epochs=200)`；标签取 $\{\pm1\}$。  
 - 报告训练合页损失与 0–1 准确率。  
-**基础**：与参考一致。  
+**基础**：在 [`data/classification_toy.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-1-learning1-w1-2/data/classification_toy.csv) 上与参考一致。  
 **挑战**：加入 L2 正则。
-
-**提交**：代码 + 简短报告（≤1 页）含曲线/表格。  
-**评分（基础/挑战）**：正确性 60，工程 20，分析 20。
+---
 
 ## 参考代码— 同题的程序实现
-ref_classification.py
+**C1:** ref_classification.py
 
 ```python
 
@@ -182,7 +177,7 @@ if __name__ == "__main__":
 
 ···
 
-ref_regression.py
+**R1:** ref_regression.py
 
 ```python
 import numpy as np
@@ -213,6 +208,7 @@ if __name__ == "__main__":
     w, hist = fit_linear_gd(X, y, lr=0.1, epochs=200)
     print("w* =", w)
     print("final loss =", hist[-1])
+
 ```
 
 ## **Week 2：机器学习2**
@@ -220,183 +216,153 @@ if __name__ == "__main__":
 ## 课堂练习
 
 1. ## 线性回归的 SGD vs GD（含二次特征微步）
-
-**手算数据**  $(1,1),(2,3),(4,3)$, $\phi(x)=[1,x]$ ，步长 $\eta=0.1$ 。  
-1) **GD 一步**：从 $w^{(0)}=[0,0]$ 计算梯度并更新 $w^{(1)}$。  
+**手算数据** [`data/regression_hand.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-2learning2-w2-1/data/regression_hand.csv)：$(1,1),(2,3),(4,3)$, $\phi(x)=[1,x]$, 步长 $\eta=0.1$.  
+1) **GD 一步**：从 $w^{(0)}=[0,0]$  计算梯度并更新 $w^{(1)}$.  
 2) **SGD 两步**：按 (1,1) → (2,3) 顺序，从 $w^{(0)}$ 依次更新。  
-3) **二次特征微步**：$\phi_2(x)=[1,x,x^2]$。在样本 (1,1) 上、从 $w=[0,0,0]$、$\eta=0.1$ 进行一次 SGD 更新。
-
-**提交**：关键公式与数值（保留两位小数）。
+3) **二次特征微步**： $\phi_2(x)=[1,x,x^2]$. 在样本 (1,1) 上、从  $w=[0,0,0]$,  $\eta=0.1$ 进行一次 SGD 更新。
 
 ## 课后练习 — 同题的程序实现
 
 **A 部分 — GD / SGD / 小批量**  
 实现 `fit_linear(X,y, method, lr, epochs, batch_size, lr_schedule)`：
-- `method ∈ {gd, sgd, minibatch}`；`lr_schedule ∈ {constant, sqrt_decay}`（$\eta_t=\eta_0/\sqrt{t}$）。
-- 在 `data/regression_nonlinear.csv` 上，分别用 $\phi=[1,x]$ 与 $\phi_2=[1,x,x^2]$ 比较速度、达到目标损失的轮数、以及最终 MSE。
+- `method ∈ {gd, sgd, minibatch}`；`lr_schedule ∈ {constant, sqrt_decay}` ($\eta_t=\eta_0/\sqrt{t}$)。
+- 在 [`data/regression_nonlinear.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-2learning2-w2-1/data/regression_nonlinear.csv) 上，分别用 $\phi=[1,x]$  与  $\phi_2=[1,x,x^2]$  比较速度、达到目标损失的轮数、以及最终 MSE。
 
 **B 部分 — 非线性特征**  
 实现二次多项式、5 分箱、余弦特征；比较 MSE。
 
-**C（可选）— 两层 ReLU 网络**  
-在 `data/classification_xor.csv` 上训练小型两层网，达到 100% 训练精度。
-
-**评分（基础/挑战）**：正确性 60，工程 20，分析 20。
-
+**C— 两层 ReLU 网络**  
+在 [`data/classification_xor.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-2learning2-w2-1/data/classification_xor.csv) 上训练小型两层网，达到 100% 训练精度。
 
 ## 参考代码— 同题的程序实现
-ref_classification.py
+
+**A:** ref_sgd_regression.py
 
 ```python
 
+import time, math
 import numpy as np
 
-def fit_hinge_gd(X, y, lr=0.1, epochs=200, l2=0.0):
-    X = np.asarray(X); y = np.asarray(y).reshape(-1)
-    n, d = X.shape
-    w = np.zeros(d)
-    hist = []
-    for _ in range(epochs):
-        margins = (X @ w) * y
-        # subgradient: average over samples
-        mask = margins < 1.0
-        grad = -(X[mask].T @ y[mask]) / n + l2 * w
-        # hinge loss value
-        loss = np.maximum(1 - margins, 0).mean() + 0.5*l2*np.dot(w,w)
-        w -= lr * grad
-        hist.append(loss)
-    # 0-1 accuracy
-    acc = (np.sign(X@w) == y).mean()
-    return w, np.array(hist), acc
-
-if __name__ == "__main__":
-    # Toy points from slides
-    X = np.array([[0.0, 2.0],
-                  [-2.0, 0.0],
-                  [1.0, -1.0]])
-    y = np.array([+1, +1, -1])
-    w, hist, acc = fit_hinge_gd(X, y, lr=0.1, epochs=50)
-    print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
-
-···
-
-ref_regression.py
-
-```python
-import numpy as np
-
-def add_bias(x):
+def add_bias_1d(x):
     x = np.asarray(x).reshape(-1,1)
     return np.hstack([np.ones_like(x), x])
 
-def fit_linear_gd(X, y, lr=0.1, epochs=200):
+def poly2_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x, x**2])
+
+def loss_mse(X, y, w):
+    err = X @ w - y
+    return float((err**2).mean())
+
+def grad_mse_full(X, y, w):
+    n = X.shape[0]
+    return (2.0/n) * (X.T @ (X@w - y))
+
+def fit_linear(X, y, method="sgd", lr=0.1, epochs=10, batch_size=32, lr_schedule="constant", seed=0):
+    rng = np.random.default_rng(seed)
     X = np.asarray(X); y = np.asarray(y).reshape(-1)
     n, d = X.shape
     w = np.zeros(d)
-    hist = []
-    for _ in range(epochs):
-        pred = X @ w
-        err = pred - y
-        loss = (err**2).mean()
-        grad = (2.0/n) * (X.T @ err)
-        w -= lr * grad
-        hist.append(loss)
-    return w, np.array(hist)
+    t_updates = 0
+    losses = []
 
-if __name__ == "__main__":
-    # Toy dataset from slides
-    x = np.array([1.0, 2.0, 4.0])
-    y = np.array([1.0, 3.0, 3.0])
-    X = add_bias(x)
-    w, hist = fit_linear_gd(X, y, lr=0.1, epochs=200)
-    print("w* =", w)
-    print("final loss =", hist[-1])
+    for ep in range(epochs):
+        idx = np.arange(n); rng.shuffle(idx)
+        if method == "gd":
+            eta = lr / math.sqrt(max(1, t_updates)) if lr_schedule=="sqrt_decay" else lr
+            g = grad_mse_full(X, y, w)
+            w -= eta * g
+            t_updates += 1
+            losses.append(loss_mse(X, y, w))
+        elif method == "sgd":
+            for i in idx:
+                xi, yi = X[i], y[i]
+                eta = lr / math.sqrt(max(1, t_updates)) if lr_schedule=="sqrt_decay" else lr
+                g = 2.0 * (xi @ w - yi) * xi
+                w -= eta * g
+                t_updates += 1
+            losses.append(loss_mse(X, y, w))
+        else:  # minibatch
+            B = max(1, min(batch_size, n))
+            for k in range(0, n, B):
+                j = idx[k:k+B]
+                Xb, yb = X[j], y[j]
+                eta = lr / math.sqrt(max(1, t_updates)) if lr_schedule=="sqrt_decay" else lr
+                g = (2.0/len(j)) * (Xb.T @ (Xb@w - yb))
+                w -= eta * g
+                t_updates += 1
+            losses.append(loss_mse(X, y, w))
+
+    return w, np.array(losses)
+```
+
+**B:** ref_features.py
+
+```python
+import numpy as np
+
+def phi_linear_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x])
+
+def phi_poly2_1d(x):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x, x**2])
+
+def phi_bins_1d(x, B=5, lo=0.0, hi=5.0):
+    x = np.asarray(x).reshape(-1)
+    edges = np.linspace(lo, hi, B+1)
+    X = np.zeros((len(x), B))
+    for i, xi in enumerate(x):
+        b = np.searchsorted(edges, xi, side="right") - 1
+        b = min(max(b, 0), B-1)
+        X[i, b] = 1.0
+    return np.hstack([np.ones((len(x),1)), X])
+
+def phi_periodic_1d(x, omega=3.0):
+    x = np.asarray(x).reshape(-1,1)
+    return np.hstack([np.ones_like(x), x, x**2, np.cos(omega*x)])
+```
+
+**C:** ref_nn_two_layer.py
+
+```python
+import numpy as np
+def relu(z): return np.maximum(z, 0.0)
+def d_relu(z): return (z > 0).astype(float)
+
+class TinyTwoLayer:
+    def __init__(self, d_in, d_h=4, lr=0.1, epochs=200, seed=0):
+        rng = np.random.default_rng(seed)
+        self.W1 = rng.normal(scale=0.5, size=(d_h, d_in)); self.b1 = np.zeros(d_h)
+        self.W2 = rng.normal(scale=0.5, size=(1, d_h));    self.b2 = np.zeros(1)
+        self.lr, self.epochs = lr, epochs
+    def fit(self, X, y):
+        X = np.asarray(X); y = np.asarray(y).reshape(-1)  # {0,1}
+        for _ in range(self.epochs):
+            z1 = X @ self.W1.T + self.b1; h = relu(z1)
+            z2 = h @ self.W2.T + self.b2
+            yhat = 1/(1+np.exp(-z2)).reshape(-1)
+            dz2 = (yhat - y)[:,None]
+            gW2 = dz2.T @ h / len(y); gb2 = dz2.mean(0)
+            dh  = dz2 @ self.W2; dz1 = dh * d_relu(z1)
+            gW1 = dz1.T @ X / len(y); gb1 = dz1.mean(0)
+            self.W2 -= self.lr*gW2; self.b2 -= self.lr*gb2
+            self.W1 -= self.lr*gW1; self.b1 -= self.lr*gb1
+        return self
+    def predict(self, X):
+        z1 = X @ self.W1.T + self.b1; h = relu(z1)
+        z2 = h @ self.W2.T + self.b2
+        yhat = 1/(1+np.exp(-z2)).reshape(-1)
+        return (yhat >= 0.5).astype(int)
 ```
 
 
 
 
 
- # 1) 线性回归 · 课堂版
-
-* 模型： $f_w(x)=w^T[1,x]$ 
-* 数据： $(-2,0),(-1,0.5),(0,1),(1,1.5),(2,2)$（即 $y=1+0.5x$）
-* 损失： $\frac1n\sum(f_w(x)-y)^2$
-* 训练：批量梯度下降（SGD 优化器）
-
-**任务:**
-写出总损失函数和相应的梯度下降迭代公式
-
-**运行：**
-
-```bash
-python regression_classroom.py
-```
-
-**期望输出（示例）：**
-
-* 学到的权重 $w=[w_1,w_2]\approx[1.0,0.5]$
-* 训练 MSE 接近 0
-* 对训练点的预测与真值一致
-
----
-
-## 2) 线性分类 · 课堂版（合页损失）
-
-* 特征： $\phi(x)=[x_1,x_2]$ （无偏置）
-* 数据（严格同 PDF）： $[0,2]\to +1,\ [-2,0]\to +1,\ [1,-1]\to -1$
-* 打分： $s(x)=w^\top\phi(x)$， 预测  $\mathrm{sign}(s)$
-* 损失： $\frac1n\sum\max(0,1-y\,s)$
-
-**任务:**
-写出总损失函数和相应的梯度下降迭代公式
-
-**运行：**
-
-```bash
-python classification_classroom.py
-```
-
-**期望输出（示例）：**
-
-* 学到的权重 $w$ 能让三点全部间隔 $\ge 1$，训练合页损失 $\to 0$
-* 训练集预测为 $[+1,+1,-1]$，精度 100%
-
----
-
-# 课后练习（可调学习率/轮数，便于做实验报告）
-
-## 3) 线性回归 · 课后版
-
-* 与课堂版相同数学设定
-* **命令行参数**：`--lr` 学习率，`--epochs` 轮数
-* 任务：
-
-  1. 在相同轮数下，画损失关于学习率的曲线，讨论学习率对收敛的影响（较小/较大对比）
-  2. 在相同学习率下，画损失关于迭代轮数的曲线，讨论迭代轮数对收敛的影响
-
-**运行示例：**
-
-```bash
-python regression_homework.py --lr 0.05 --epochs 500
-```
-
----
-
-## 4) 线性分类 · 课后版（合页损失）
-
-* 
-* **命令行参数**：`--lr` 学习率，`--epochs` 轮数
-* 任务建议：
-
-  1. 在相同轮数下，画损失关于学习率的曲线，讨论学习率对收敛的影响（较小/较大对比）
-  2. 在相同学习率下，画损失关于迭代轮数的曲线，讨论迭代轮数对收敛的影响
-
-**运行示例：**
-
-```bash
-python classification_homework.py --lr 0.2 --epochs 200
-```
+ 
 
 
 
