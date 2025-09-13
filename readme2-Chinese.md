@@ -175,7 +175,7 @@ if __name__ == "__main__":
     w, hist, acc = fit_hinge_gd(X, y, lr=0.1, epochs=50)
     print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
 
-···
+```
 
 **R1:** ref_regression.py
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
 ```
 
-## **Week 2：机器学习2**
+## **Week 2-1：机器学习2**
 
 ## 课堂练习
 
@@ -358,6 +358,94 @@ class TinyTwoLayer:
         return (yhat >= 0.5).astype(int)
 ```
 
+## **Week 2-2：机器学习3**
+
+## 课堂练习 — 同题双用（两条主线）
+
+## A 线 — 手算反向传播（平方损失）
+给  $w=[3,1]$ 、 $\phi=[1,2]$ 、 $V=[0.1, -0.2; 0.3, 0.05]$, $y=2$, 中间非线性函数$\sigma(x)=\frac{1}{1+e^{-x}}$ ，前向→反向，求   $\nabla_{w,V}L$ 。
+
+## B 线 — K-means 一次迭代
+点集: (0,0),(0,3),(3,0),(3,3). $K=2$, $\mu_1=(0,0)$, $\mu_2=(3,3)$. 1) 分配；2) 更新；3) 比较目标值。
+
+## 课后练习 — 同题程序实现
+
+**A 部分 — 两层网反向传播（平方损失）**：[使用数据backprop_toy.json](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-3learning3-w2-2/data/backprop_toy.json)实现 `forward`/`backward` 并用差分校验。  
+**B 部分 — 带重启/k++ 的 K-means**：实现并比较不同初始化与种子下的损失。  
+**C 小练习 — L2 + 早停的验证集选择**：[修改并添加数据backprop_toy.json](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-3learning3-w2-2/data/backprop_toy.json)划分 train/val，网格搜索 $\lambda$，加早停并报告结果。
+
+## 参考代码— 同题的程序实现
+
+ref_backprop_two_layer.py
+
+```python
+import numpy as np
+def sigmoid(z): return 1/(1+np.exp(-z))
+def forward(phi, V, w, y):
+    z1 = V @ phi; h = sigmoid(z1); s = float(w @ h)
+    residual = s - float(y); loss = residual**2
+    return (phi, V, w, y, z1, h, s, residual, loss)
+def backward(cache):
+    phi, V, w, y, z1, h, s, residual, loss = cache
+    grad_w = 2.0 * residual * h
+    g = 2.0 * residual * (w * h * (1-h))
+    grad_V = np.outer(g, phi)
+    return grad_w, grad_V, loss
+```
+
+ref_kmeans.py
+
+```python
+import numpy as np
+def kmeans_pp_init(X, K, rng):
+    n = X.shape[0]; centers = np.empty((K, X.shape[1]))
+    i0 = rng.integers(n); centers[0] = X[i0]; d2 = np.full(n, np.inf)
+    for k in range(1, K):
+        d2 = np.minimum(d2, ((X - centers[k-1])**2).sum(1))
+        probs = d2 / d2.sum(); i = rng.choice(n, p=probs); centers[k] = X[i]
+    return centers
+def kmeans(X, K, init='random', restarts=10, max_iter=100, seed=0):
+    rng = np.random.default_rng(seed); best = None
+    for _ in range(restarts):
+        if init=='k++': centers = kmeans_pp_init(X, K, rng)
+        else:
+            lo, hi = X.min(0), X.max(0); centers = rng.uniform(lo, hi, size=(K, X.shape[1]))
+        for _ in range(max_iter):
+            d2 = ((X[:,None,:]-centers[None,:,:])**2).sum(-1)
+            assign = d2.argmin(1)
+            new = centers.copy()
+            for k in range(K):
+                idx = np.where(assign==k)[0]
+                if len(idx)>0: new[k] = X[idx].mean(0)
+            if np.allclose(new, centers): centers = new; break
+            centers = new
+        loss = ((X - centers[assign])**2).sum()
+        if best is None or loss < best[-1]: best = (assign, centers, float(loss))
+    return best
+```
+
+ref_validation_regularization.py
+
+```python
+import numpy as np
+def add_bias_1d(x):
+    x = np.asarray(x).reshape(-1,1); return np.hstack([np.ones_like(x), x])
+def fit_ridge(X, y, lam=0.0, lr=0.1, epochs=300, early_stop=False, patience=20, X_val=None, y_val=None):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape; w = np.zeros(d); best = (np.inf, w.copy()); wait = 0
+    def mse(A,b,w): e=A@w-b; return float((e**2).mean())
+    for ep in range(epochs):
+        grad = (2.0/n) * (X.T @ (X@w - y)) + lam * w
+        w -= lr * grad
+        if X_val is not None:
+            v = mse(X_val, y_val, w)
+            if v < best[0]-1e-10: best = (v, w.copy()); wait=0
+            else:
+                wait += 1
+                if early_stop and wait>=patience: break
+    return best[1] if early_stop else w
+
+```
 
 
 
