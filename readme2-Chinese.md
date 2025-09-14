@@ -216,7 +216,7 @@ if __name__ == "__main__":
 ## 课堂练习
 
 1. ## 线性回归的 SGD vs GD（含二次特征微步）
-**手算数据** [`data/regression_hand.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-2learning2-w2-1/data/regression_hand.csv)：$(1,1),(2,3),(4,3)$, $\phi(x)=[1,x]$, 步长 $\eta=0.1$.  
+**手算数据** [`data/regression_hand.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/BlackBoard-InOutClassExcercise-Code-Bilingual/2-2learning2-w2-1/data/regression_hand.csv)： $(1,1),(2,3),(4,3)$ , $\phi(x)=[1,x]$, 步长 $\eta=0.1$.  
 1) **GD 一步**：从 $w^{(0)}=[0,0]$  计算梯度并更新 $w^{(1)}$.  
 2) **SGD 两步**：按 (1,1) → (2,3) 顺序，从 $w^{(0)}$ 依次更新。  
 3) **二次特征微步**： $\phi_2(x)=[1,x,x^2]$. 在样本 (1,1) 上、从  $w=[0,0,0]$,  $\eta=0.1$ 进行一次 SGD 更新。
@@ -363,7 +363,7 @@ class TinyTwoLayer:
 ## 课堂练习 — 同题双用（两条主线）
 
 ## A 线 — 手算反向传播（平方损失）
-给  $w=[3,1]$ 、 $\phi=[1,2]$ 、 $V=[0.1, -0.2; 0.3, 0.05]$, $y=2$, 中间非线性函数$\sigma(x)=\frac{1}{1+e^{-x}}$ ，前向→反向，求   $\nabla_{w,V}L$ 。
+给  $w=[3,1]$ 、 $\phi=[1,2]$ 、 $V=[0.1, -0.2; 0.3, 0.05]$, $y=2$, 中间非线性函数 $\sigma(x)=\frac{1}{1+e^{-x}}$ ，前向→反向，求   $\nabla_{w,V}L$ 。
 
 ## B 线 — K-means 一次迭代
 点集: (0,0),(0,3),(3,0),(3,3). $K=2$, $\mu_1=(0,0)$, $\mu_2=(3,3)$. 1) 分配；2) 更新；3) 比较目标值。
@@ -447,10 +447,243 @@ def fit_ridge(X, y, lam=0.0, lr=0.1, epochs=300, early_stop=False, patience=20, 
 
 ```
 
+## **Week 3-1：3-1search1-w3-1**
+## 课堂练习 — 同题：交通问题（1 → n）
 
+**问题（建模）**  
+街区 1..n。处于 $s$ 时：
+- **walk** 到 $s+1$，代价 1
+- **tram** 到 $2s$，代价 2（若 $2s\le n$）
+起点 $s=1$；当 $s=n$ 为终点。状态单调增 ⇒ **无环**。
 
+## 任务
+1) **建模**：写出 Start、IsEnd、Actions、Succ、Cost。  
+2) **树搜索草图**：从 $s=1$ 列出 3 层内可达状态。给出分支因子 $b$、上界深度 $D$ 与一个合理的解深度 $d$。  
+3) **DP 递推**：推导 FutureCost(s)。对 $n=10$ 自 $s=10\downarrow 1$ 填表。  
+4) **UCS 手算（前若干步）**：对 $n=10$ 列出每次弹出后的 frontier（state: pastCost），直到首次到达 $n$。最优路径与代价？
 
- 
+**提交**：关键公式 + 表格 + UCS 截图（2–3 位小数）。
+
+## 课后练习  — 同题的程序实现：树搜索 · 动态规划 · UCS
+
+实现 **TransportationProblem(n, unit_cost=False)** 与以下算法：
+
+1) **回溯搜索**（返回最小代价路径；统计展开节点数）。  
+2) 在 **unit_cost=True**（两种动作都视作代价 1）下实现 **DFS / BFS / DFID**，比较节点展开量与解深度 $d$。  
+3) **动态规划**（记忆化，适用于无环）：计算 FutureCost(1) 并重构一条最优路径。  
+4) **一致代价搜索（UCS）**（非负代价，默认为 1/2）：返回最优路径与代价。
+
+**报告**：对 $n \in \{10, 50, 100, 500\}$  
+- 给出最优代价（DP 与 UCS 应一致）、路径长度、各法的展开节点数与 frontier 峰值；  
+- 讨论 DFID 何时在空间上优于 BFS；非等代价下 UCS 为何优于 BFS。
+- 
+**进阶**：加入 **k-tram** 动作 $s\to ks$ 费用 $c_k$；设计可采纳启发 $h(s)$ 尝试 **A\***（可选加分）。
+
+## 参考代码— 同题的程序实现
+
+ref_search_algorithms.py
+
+ ```python
+from collections import deque
+import heapq
+
+# ---------- SearchProblem interface ----------
+class SearchProblem:
+    def start_state(self):
+        raise NotImplementedError
+    def is_end(self, s):
+        raise NotImplementedError
+    def succ_and_cost(self, s):
+        '''Yield (action, s', cost).'''
+        raise NotImplementedError
+
+# ---------- TransportationProblem ----------
+class TransportationProblem(SearchProblem):
+    '''
+    States: integers s in [1..n]
+    Actions:
+      - 'walk' to s+1 with cost 1
+      - 'tram' to 2*s with cost 2 (only if 2*s <= n)
+    If unit_cost=True, treat both actions as cost=1 (for BFS/DFID demonstrations).
+    '''
+    def __init__(self, n, unit_cost=False):
+        assert n >= 1
+        self.n = n
+        self.unit_cost = unit_cost
+
+    def start_state(self):
+        return 1
+
+    def is_end(self, s):
+        return s == self.n
+
+    def succ_and_cost(self, s):
+        if s < self.n:
+            # walk
+            c = 1 if not self.unit_cost else 1
+            yield ('walk', s+1, c)
+            # tram
+            if 2*s <= self.n:
+                c = 2 if not self.unit_cost else 1
+                yield ('tram', 2*s, c)
+
+# ---------- Utilities ----------
+def reconstruct_path(parent, end_state):
+    path = []
+    s = end_state
+    while s in parent:
+        s_prev, action, cost = parent[s]
+        path.append((action, s, cost))
+        s = s_prev
+    path.reverse()
+    return path
+
+# ---------- Backtracking (exponential) ----------
+def backtracking_min_cost(problem):
+    best = {'cost': float('inf'), 'path': None}
+    expansions = 0
+
+    def dfs(s, cost_so_far, parent):
+        nonlocal expansions
+        if cost_so_far >= best['cost']:
+            return
+        expansions += 1
+        if problem.is_end(s):
+            best['cost'] = cost_so_far
+            best['path'] = reconstruct_path(parent, s)
+            return
+        for action, sp, c in problem.succ_and_cost(s):
+            parent[sp] = (s, action, c)
+            dfs(sp, cost_so_far + c, parent)
+            parent.pop(sp, None)
+
+    dfs(problem.start_state(), 0, {})
+    return best['path'], best['cost'], expansions
+
+# ---------- DFS (unit-cost, stop at first goal) ----------
+def dfs_first_solution(problem, max_depth=10**6):
+    start = problem.start_state()
+    stack = [(start, 0)]
+    parent = {}
+    seen = set([start])
+    expansions = 0
+    while stack:
+        s, depth = stack.pop()
+        expansions += 1
+        if problem.is_end(s):
+            return reconstruct_path(parent, s), depth, expansions
+        if depth == max_depth:
+            continue
+        for action, sp, c in problem.succ_and_cost(s):
+            if sp not in seen:
+                seen.add(sp)
+                parent[sp] = (s, action, c)
+                stack.append((sp, depth+1))
+    return None, None, expansions
+
+# ---------- BFS (unit-cost optimal) ----------
+def bfs_unit_cost(problem):
+    start = problem.start_state()
+    q = deque([start])
+    parent = {}
+    seen = set([start])
+    expansions = 0
+    depth = {start: 0}
+    while q:
+        s = q.popleft()
+        expansions += 1
+        if problem.is_end(s):
+            return reconstruct_path(parent, s), depth[s], expansions
+        for action, sp, c in problem.succ_and_cost(s):
+            if sp not in seen:
+                seen.add(sp)
+                parent[sp] = (s, action, c)
+                depth[sp] = depth[s] + 1
+                q.append(sp)
+    return None, None, expansions
+
+# ---------- DFS with Iterative Deepening (unit-cost optimal) ----------
+def dfid_unit_cost(problem, max_depth=10**6):
+    start = problem.start_state()
+    expansions_total = 0
+    for limit in range(max_depth+1):
+        stack = [(start, 0)]
+        parent = {}
+        seen = {start}
+        while stack:
+            s, depth = stack.pop()
+            expansions_total += 1
+            if problem.is_end(s):
+                return reconstruct_path(parent, s), depth, expansions_total
+            if depth == limit:
+                continue
+            for action, sp, c in problem.succ_and_cost(s):
+                if sp not in seen:
+                    seen.add(sp)
+                    parent[sp] = (s, action, c)
+                    stack.append((sp, depth+1))
+    return None, None, expansions_total
+
+# ---------- Dynamic Programming (acyclic) ----------
+def dp_future_cost(problem):
+    from functools import lru_cache
+    @lru_cache(maxsize=None)
+    def F(s):
+        if problem.is_end(s):
+            return 0
+        best = float('inf')
+        for action, sp, c in problem.succ_and_cost(s):
+            best = min(best, c + F(sp))
+        return best
+    cost = F(problem.start_state())
+    # reconstruct greedily
+    path = []
+    s = problem.start_state()
+    while not problem.is_end(s):
+        best_act = None
+        best_val = float('inf')
+        for action, sp, c in problem.succ_and_cost(s):
+            val = c + F(sp)
+            if val < best_val:
+                best_val = val; best_act = (action, sp, c)
+        action, sp, c = best_act
+        path.append((action, sp, c))
+        s = sp
+    return path, cost
+
+# ---------- Uniform Cost Search (Dijkstra on implicit graph) ----------
+def ucs(problem):
+    start = problem.start_state()
+    frontier = [(0, start)]
+    parent = {}
+    best_cost = {start: 0}
+    explored = set()
+    expansions = 0
+    while frontier:
+        cost, s = heapq.heappop(frontier)
+        if s in explored:
+            continue
+        explored.add(s)
+        expansions += 1
+        if problem.is_end(s):
+            return reconstruct_path(parent, s), cost, expansions
+        for action, sp, c in problem.succ_and_cost(s):
+            new_cost = cost + c
+            if new_cost < best_cost.get(sp, float('inf')):
+                best_cost[sp] = new_cost
+                parent[sp] = (s, action, c)
+                heapq.heappush(frontier, (new_cost, sp))
+    return None, float('inf'), expansions
+
+if __name__ == "__main__":
+    # Sanity: n=10 should have optimal total cost 6
+    prob = TransportationProblem(10, unit_cost=False)
+    path_dp, cost_dp = dp_future_cost(prob)
+    path_ucs, cost_ucs, exp_ucs = ucs(prob)
+    print("DP:", cost_dp, path_dp)
+    print("UCS:", cost_ucs, path_ucs, "expansions:", exp_ucs)
+
+```
 
 
 
