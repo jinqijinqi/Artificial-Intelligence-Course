@@ -1549,8 +1549,8 @@ if __name__ == "__main__":
 # 课堂练习 — 同题：澳大利亚地图着色
 
 **变量与域**  
-$X=${$\mathrm{WA},\mathrm{NT},\mathrm{SA},\mathrm{Q},\mathrm{NSW},\mathrm{V},\mathrm{T}$}.  
-$\mathrm{Dom}=${$\text{R},\text{G},\text{B}$}.
+$X=$ { $\mathrm{WA},\mathrm{NT},\mathrm{SA},\mathrm{Q},\mathrm{NSW},\mathrm{V},\mathrm{T}$ }.  
+$\mathrm{Dom}=$ { $\text{R},\text{G},\text{B}$ }.
 
 **二元约束**（相邻不同色）  
 边： (WA,NT)、(WA,SA)、(NT,SA)、(NT,Q)、(SA,Q)、(SA,NSW)、(SA,V)、(Q,NSW)、(NSW,V)。  
@@ -1732,8 +1732,272 @@ if __name__ == "__main__":
     print("Order:", log)
 ```
 
+## **Week 6-2：6-2csps2-w6-2**
 
+# 课堂练习 — 同题：三步目标跟踪（回溯 · 前视/AC‑3 · Beam · ICM）
 
+**设定** 变量 $X_1,X_2,X_3\in$ { $0,1,2$ }, 观测 $o=(0,2,2)$。  
+观测因子 $O_i(x_i)=\max(0, 2-|x_i-o_i|)$（以 $o_i$ 为中心的 $[2,1,0]$）；
+转移因子 $T_i(x_i,x_{i+1})$：相等 2，相差 1 给 1，否则 0。
+
+## 任务
+1) **部分权演示**：在 $x=$ { $X_1=0$ } 下扩展 $X_2\in$ { $0,1,2$ } 时的依赖因子与 $\delta$。  
+2) **前视检查**：设 $X_2=2$ 后，用 $T_1,T_2$ 将 $X_1,X_3$ 中与之不相容的取值删除，给出新域。 
+3) **AC‑3 跟踪**：从空赋值、初域 { $0,1,2$ } 出发，**利用 $T_i$ 中为 0 的对儿** 做一轮 AC‑3；记录删掉的取值。  
+4) **束搜索（K=2）**：逐层扩展；在深度 1/2/3 分别列出前 2 个候选及其权重。  
+5) **ICM（单次遍历）**：从 (0,0,0) 出发，依次更新 $X_2\rightarrow X_3\rightarrow X_1$，给出新赋值与权重。
+
+# 课后作业 — 同题程序实现：回溯/AC‑3 · 束搜索 · ICM 的三步跟踪
+
+1) **数据模型** 建立因子：域 {0,1,2}；观测 $O_i(x)=\max(0,2-|x-o_i|)$ ( $o=(0,2,2)$ )；
+转移 $T_i(x,y)=2[x=y]+1[|x-y|=1]$。
+
+2) **回溯**：MCV/MRV + LCV + **前视检查**，用依赖因子计算部分权。
+
+3) **AC‑3**（二元、零支撑剪枝），接入回溯（域更新时触发 AC‑3）。
+
+4) **束搜索**（K∈{1,2,3}）：基于部分权扩展；报告最优完整赋值与权重；与回溯的节点数对比。
+
+5) **ICM**：从 5 个随机初值开始；报告达到的最佳权重与局部最优出现频率。
+
+6) **（选做）** 加入“加速度”软约束 $A_i=|x_{i+1}-2x_i+x_{i-1}|$，因子取 $\exp(-\lambda A_i)$；重复 (2)-(5)。
+
+**提交**：代码 + ≤2 页报告（节点/权重表；简要讨论）。
+
+## 参考代码— 同题的程序实现
+ref_csps2.py
+
+```python
+from typing import Dict, List, Tuple, Callable, Optional
+import itertools, random
+
+Var = str
+Val = int
+Assignment = Dict[Var, Val]
+
+class WeightedCSP:
+    def __init__(self, variables: List[Var], domains: Dict[Var, List[Val]]):
+        self.variables = variables
+        self.domains = {v:list(domains[v]) for v in variables}
+        # factors: unary[var] -> dict[val]->w ; binary[(u,v)] -> dict[(a,b)]->w
+        self.unary = {v:{} for v in variables}
+        self.binary = {}  # key is ordered pair (u,v)
+        self.neigh = {v:set() for v in variables}
+
+    def add_unary(self, v: Var, table: Dict[Val, float]):
+        self.unary[v] = dict(table)
+
+    def add_binary(self, u: Var, v: Var, table: Dict[Tuple[Val,Val], float]):
+        self.binary[(u,v)] = dict(table)
+        self.binary[(v,u)] = {(b,a):w for (a,b),w in table.items()}
+        self.neigh[u].add(v); self.neigh[v].add(u)
+
+    # ----- factor evaluation -----
+    def dep_weight(self, x: Assignment, var: Var, val: Val) -> float:
+        """Product of factors touching var whose other vars are already assigned in x."""
+        w = 1.0
+        # unary
+        if self.unary[var]:
+            w *= self.unary[var].get(val, 0.0)
+        # binary with assigned neighbors
+        for nb in self.neigh[var]:
+            if nb in x:
+                w *= self.binary[(var,nb)].get((val, x[nb]), 0.0)
+        return w
+
+    def full_weight(self, x: Assignment) -> float:
+        # assumes all variables assigned
+        w = 1.0
+        for v in self.variables:
+            if self.unary[v]: w *= self.unary[v].get(x[v], 0.0)
+        for (u,v), tab in self.binary.items():
+            if (u < v):  # count each undirected pair once
+                w *= tab.get((x[u], x[v]), 0.0)
+        return w
+
+# ---------- Lookahead: forward checking ----------
+def forward_check(csp: WeightedCSP, x: Assignment, var: Var, val: Val):
+    """Return (ok, removed) where removed is list of (y, values) pruned; prune only 0-supported values."""
+    removed = []
+    for y in csp.neigh[var]:
+        if y in x: continue
+        to_rm = []
+        for b in list(csp.domains[y]):
+            # check if any factor forbids (var=val, y=b)
+            w = csp.binary[(var,y)].get((val,b), 0.0)
+            if w == 0.0:
+                to_rm.append(b)
+        if to_rm:
+            removed.append((y, to_rm))
+            csp.domains[y] = [b for b in csp.domains[y] if b not in to_rm]
+            if not csp.domains[y]:
+                return False, removed
+    return True, removed
+
+def undo_fc(csp: WeightedCSP, removed):
+    for y, vals in removed:
+        for b in vals:
+            if b not in csp.domains[y]:
+                csp.domains[y].append(b)
+
+# ---------- AC-3 ----------
+from collections import deque
+def enforce_arc_consistency(csp: WeightedCSP):
+    """AC-3 using zero-support pruning on binary factors."""
+    q = deque()
+    for (u,v) in csp.binary.keys():
+        q.append((u,v))
+    changed = False
+    while q:
+        u,v = q.popleft()
+        dom_u = list(csp.domains[u])
+        removed = False
+        for a in dom_u:
+            # check if a has any supporting b in v's domain with nonzero factor
+            ok = any(csp.binary[(u,v)].get((a,b),0.0) > 0.0 for b in csp.domains[v])
+            if not ok:
+                csp.domains[u].remove(a)
+                removed = True
+                changed = True
+        if removed:
+            for w in csp.neigh[u]:
+                if w != v:
+                    q.append((w,u))
+    return changed
+
+# ---------- Heuristics ----------
+def mrv(csp: WeightedCSP, x: Assignment) -> Var:
+    unassigned = [v for v in csp.variables if v not in x]
+    # MRV: smallest domain size
+    k = min(len(csp.domains[v]) for v in unassigned)
+    cands = [v for v in unassigned if len(csp.domains[v]) == k]
+    # tie-break by degree
+    cands.sort(key=lambda v: -len([nb for nb in csp.neigh[v] if nb not in x]))
+    return cands[0]
+
+def lcv_values(csp: WeightedCSP, x: Assignment, var: Var) -> List[Val]:
+    def score(val):
+        # count how many neighbor values remain nonzero-compatible
+        s = 0
+        for nb in csp.neigh[var]:
+            if nb in x: continue
+            s += sum(1 for b in csp.domains[nb] if csp.binary[(var,nb)].get((val,b),0.0) > 0.0)
+        return -s  # smaller is worse
+    return sorted(list(csp.domains[var]), key=score)
+
+# ---------- Backtracking ----------
+def backtracking(csp: WeightedCSP):
+    x: Assignment = {}
+    best = (0.0, None)  # (weight, assignment)
+    nodes = 0; backs = 0
+
+    # optional AC-3 before search
+    enforce_arc_consistency(csp)
+
+    def dfs():
+        nonlocal nodes, backs, best
+        if len(x) == len(csp.variables):
+            w = csp.full_weight(x)
+            if w > best[0]: best = (w, dict(x))
+            return True
+        var = mrv(csp, x)
+        for val in lcv_values(csp, x, var):
+            nodes += 1
+            delta = csp.dep_weight(x, var, val)
+            if delta == 0.0: 
+                continue
+            x[var] = val
+            # forward check + AC-3
+            ok, removed = forward_check(csp, x, var, val)
+            if ok:
+                enforce_arc_consistency(csp)
+                dfs()
+            undo_fc(csp, removed)
+            x.pop(var, None)
+        backs += 1
+        return False
+
+    dfs()
+    return best, nodes, backs
+
+# ---------- Beam search ----------
+def beam_search(csp: WeightedCSP, K: int):
+    # candidates are (assignment, weight)
+    cand = [({}, 1.0)]
+    for var in csp.variables:
+        # extend all
+        ext = []
+        for x, w in cand:
+            for val in csp.domains[var]:
+                delta = csp.dep_weight(x, var, val)
+                if delta == 0.0: 
+                    continue
+                x2 = dict(x); x2[var] = val
+                ext.append((x2, w*delta))
+        # keep top-K by weight
+        ext.sort(key=lambda t: t[1], reverse=True)
+        cand = ext[:K] if ext else []
+        if not cand: break
+    # pick best full if exists
+    best = max(cand, key=lambda t: t[1]) if cand else ({}, 0.0)
+    return best
+
+# ---------- Local search (ICM) ----------
+def icm(csp: WeightedCSP, iters: int=10, seed: int=0):
+    random.seed(seed)
+    # random full assignment (not guaranteed positive weight)
+    x = {v: random.choice(csp.domains[v]) for v in csp.variables}
+    def local_weight(var, val):
+        # local product: unary(var) * binaries with neighbors
+        w = csp.unary[var].get(val, 1.0) if csp.unary[var] else 1.0
+        for nb in csp.neigh[var]:
+            b = x[nb]
+            w *= csp.binary[(var,nb)].get((val, b), 0.0)
+        return w
+    improved = True
+    steps = 0
+    while improved and steps < iters:
+        improved = False; steps += 1
+        for v in csp.variables:
+            best = max(csp.domains[v], key=lambda a: local_weight(v,a))
+            if local_weight(v, best) > local_weight(v, x[v]):
+                x[v] = best; improved = True
+    # compute full weight at end (includes unary of all vars and binaries once)
+    return x
+
+# ---------- Instance: 3-step tracking ----------
+def build_tracking_instance():
+    vars = ["X1","X2","X3"]
+    doms = {v:[0,1,2] for v in vars}
+    csp = WeightedCSP(vars, doms)
+    obs = { "X1":0, "X2":2, "X3":2 }
+    # unary obs factors: 2,1,0 by distance
+    for v in vars:
+        table = {a: max(0, 2-abs(a-obs[v])) for a in doms[v]}
+        csp.add_unary(v, table)
+    # binary transitions
+    def trans(a,b):
+        if a==b: return 2
+        if abs(a-b)==1: return 1
+        return 0
+    for (u,v) in [("X1","X2"),("X2","X3")]:
+        tab = {}
+        for a in doms[u]:
+            for b in doms[v]:
+                tab[(a,b)] = trans(a,b)
+        csp.add_binary(u,v, tab)
+    return csp
+
+if __name__ == "__main__":
+    csp = build_tracking_instance()
+    best, nodes, backs = backtracking(csp)
+    print("Backtracking best:", best, "nodes:", nodes, "backs:", backs)
+    csp2 = build_tracking_instance()
+    print("Beam K=2:", beam_search(csp2, K=2))
+    csp3 = build_tracking_instance()
+    print("ICM:", icm(csp3, iters=10, seed=0))
+
+```
 
 # 所有作业（作业1，2，3，7，8必做，作业4，5，6必选一个，但鼓励大家都选）
 1. (第二周周四截止）Homework 1--Pytorch Installation 简述!<br/>
