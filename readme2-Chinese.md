@@ -723,6 +723,1015 @@ if __name__ == "__main__":
 **选学（结构化感知机）**：给定目标路径，学习 walk/tram 代价并用 A* 复现。
 
 
+## 参考代码— 同题的程序实现
+ref_search2_astar.py
+
+```python
+from collections import deque
+import heapq
+
+# ---------- Base ----------
+class SearchProblem:
+    def start_state(self): raise NotImplementedError
+    def is_end(self, s):   raise NotImplementedError
+    def succ_and_cost(self, s):
+        """yield (action, s', cost)"""
+        raise NotImplementedError
+
+# ---------- Constrained Transportation ----------
+class ConstrainedTransportation(SearchProblem):
+    """
+    State: (loc, delta), delta = #walk - #tram >= 0
+    Start: (1, 0); End: any (n, delta>=0)
+    Actions:
+      walk: (loc, d) -> (loc+1, d+1)  cost 1
+      tram: (loc, d) -> (2*loc, d-1)  cost 2, only if d-1 >= 0 and 2*loc <= n
+    """
+    def __init__(self, n):
+        assert n >= 1
+        self.n = n
+    def start_state(self): return (1, 0)
+    def is_end(self, s): loc, d = s; return loc == self.n and d >= 0
+    def succ_and_cost(self, s):
+        loc, d = s
+        if loc < self.n:
+            yield ("walk", (loc+1, d+1), 1)
+            if d-1 >= 0 and 2*loc <= self.n:
+                yield ("tram", (2*loc, d-1), 2)
+
+# ---------- Relaxed Transportation (drop delta constraint) ----------
+class RelaxedTransportation:
+    def __init__(self, n): self.n = n
+    def neighbors(self, s):
+        if s < self.n:
+            yield (s+1, 1)
+            if 2*s <= self.n:
+                yield (2*s, 2)
+
+# ---------- UCS (for reference) ----------
+def ucs(problem):
+    start = problem.start_state()
+    pq = [(0, start)]
+    best = {start: 0}
+    parent = {}
+    explored = set()
+    expansions = 0
+    while pq:
+        cost, s = heapq.heappop(pq)
+        if s in explored: continue
+        explored.add(s); expansions += 1
+        if problem.is_end(s):
+            return reconstruct(parent, s), cost, expansions
+        for a, sp, c in problem.succ_and_cost(s):
+            nc = cost + c
+            if nc < best.get(sp, float("inf")):
+                best[sp] = nc
+                parent[sp] = (s, a, c)
+                heapq.heappush(pq, (nc, sp))
+    return None, float("inf"), expansions
+
+def reconstruct(parent, s):
+    path = []
+    while s in parent:
+        ps, a, c = parent[s]
+        path.append((a, s, c))
+        s = ps
+    path.reverse()
+    return path
+
+# ---------- A* (UCS with f=g+h) ----------
+def astar(problem, h):
+    start = problem.start_state()
+    pq = [(h(start), 0, start)]  # (f, g, s)
+    best_g = {start: 0}
+    parent = {}
+    explored = set()
+    expansions = 0
+    while pq:
+        f, g, s = heapq.heappop(pq)
+        if s in explored: continue
+        explored.add(s); expansions += 1
+        if problem.is_end(s):
+            return reconstruct(parent, s), g, expansions
+        for a, sp, c in problem.succ_and_cost(s):
+            new_g = g + c
+            new_f = new_g + h(sp)
+            if new_g < best_g.get(sp, float("inf")):
+                best_g[sp] = new_g
+                parent[sp] = (s, a, c)
+                heapq.heappush(pq, (new_f, new_g, sp))
+    return None, float("inf"), expansions
+
+# ---------- Heuristics ----------
+def h_zero(s): return 0
+
+def make_h_walk(n):
+    def h(s):
+        loc = s if isinstance(s, int) else s[0]
+        return max(0, n - loc)
+    return h
+
+def make_h_relaxed(n):
+    """
+    Compute relaxed FutureCost via UCS on the REVERSED relaxed problem.
+    Equivalent to Dijkstra from goal node n on edges:
+      (s-1)->s cost 1
+      (2*s)->s cost 2
+    """
+    INF = 10**18
+    dist = [INF]*(n+1)
+    dist[n] = 0
+    pq = [(0, n)]
+    while pq:
+        d, s = heapq.heappop(pq)
+        if d != dist[s]: continue
+        # reversed edges
+        if s - 1 >= 1:
+            v = s - 1; nd = d + 1
+            if nd < dist[v]:
+                dist[v] = nd; heapq.heappush(pq, (nd, v))
+        if 2*s <= n:
+            v = 2*s; nd = d + 2
+            if nd < dist[v]:
+                dist[v] = nd; heapq.heappush(pq, (nd, v))
+    def h(s):
+        loc = s if isinstance(s, int) else s[0]
+        return dist[loc]
+    return h
+
+def make_h_max(h1, h2):
+    return lambda s: max(h1(s), h2(s))
+
+# ---------- Consistency checker ----------
+def check_consistency(problem, h, samples=2000, seed=0):
+    import random
+    rnd = random.Random(seed)
+    for _ in range(samples):
+        s = problem.start_state()
+        for __ in range(100):
+            for a, sp, c in problem.succ_and_cost(s):
+                cprime = c + h(sp) - h(s)
+                if cprime < -1e-9:
+                    return False
+            succs = list(problem.succ_and_cost(s))
+            if not succs: break
+            a, sp, c = rnd.choice(succs)
+            s = sp
+            if problem.is_end(s): break
+    return True
+
+if __name__ == "__main__":
+    n = 60
+    prob = ConstrainedTransportation(n)
+    h0 = h_zero
+    hw = make_h_walk(n)
+    hr = make_h_relaxed(n)
+    hm = make_h_max(hw, hr)
+    _, cu, _ = ucs(prob)
+    _, c0, _ = astar(prob, h0)
+    _, cw, _ = astar(prob, hw)
+    _, cr, _ = astar(prob, hr)
+    _, cm, _ = astar(prob, hm)
+    print("Costs:", cu, c0, cw, cr, cm)
+    print("Consistent(walk)?", check_consistency(prob, hw))
+    print("Consistent(relaxed)?", check_consistency(prob, hr))
+
+```
+
+## **Week 4-1：4-1mdp1-w4-1**
+
+# 课堂练习 — 同题：掷骰子游戏（策略评估与价值迭代）
+
+**设定**  
+状态 $S=\{\text{in}, \text{end}\}$. **in** 上动作为 `stay` 或 `quit`；**end** 无动作。  
+转移（给定 γ）：  
+- `quit`: $T(\text{in}, \text{quit}, \text{end})=1$, 奖励 $R=10$.  
+- `stay`: $T(\text{in},\text{stay},\text{in})=\tfrac{2}{3}$, $T(\text{in},\text{stay},\text{end})=\tfrac{1}{3}$, 两条分支奖励均 $R=4$.
+
+## 任务
+1) **闭式**（γ=1）：对策略 π(stay)，解 $V^{\pi}(\text{in})=\tfrac{1}{3}(4+0)+\tfrac{2}{3}(4+V^{\pi}(\text{in}))$.  
+2) **迭代评估**：γ=1, $V^{(0)}\equiv0$, 计算 $t=1..5$ 的 $V^{(t)}(\text{in})$, 给出每步最大变化 $\Delta_t$.  
+3) **价值迭代**: $V^{(0)}\equiv0$, 计算 $V^{(t)}$ 与贪心动作 $\pi^{(t)}(\text{in})$ (t=1..5). 策略何时由 `quit` 变为 `stay`？  
+4) **折扣**：设 γ=0.5，重做 (1)–(3)。此时最优策略是谁？
+
+**提交**：推导过程, $V^{(t)}(\text{in})$ 序列, $\pi^{(t)}$ 稳定的首个步数 t。
+
+# 课后作业 — 同题程序实现：骰子 MDP 的策略评估与价值迭代
+
+实现一个小型 MDP 工具并求解骰子游戏：
+
+1) **MDP 接口**：`states()`、`actions(s)`、`transitions(s,a)` → `(s', prob, reward)` 列表、`is_end(s)`、`start_state`。  
+2) **policy_evaluation(mdp, policy, gamma, eps)**：返回 $V^{\pi}$, 并满足 $\max_s|Δ|\le$ eps; 报告迭代次数与计数。  
+3) **value_iteration(mdp, gamma, eps)**: 返回  $V^\*,\pi^\*$; 同时返回 $(\max_s|Δ|,\pi^{(t)})$ 迭代日志.  
+4) **实验**：  
+   - γ=1：比较 $V^{\pi=\text{stay}}$, $V^{\pi=\text{quit}}$, 以及 $V^*$ (在 **in** 的取值）。  
+   - γ∈{0.0, 0.5, 0.9}：重复，分析最优策略何时翻转。  
+5) **（选做）** 实现 **3×4 火山网格世界**（滑移概率 p、步长惩罚 r_step、终止奖励 r_goal/r_lava），做 10/20/50 次价值迭代展示“价值传播”。
+
+**提交**：代码 + 1–2 页小报告（含 $V$, 贪心策略随迭代的表/图与结论）。
+
+## 参考代码— 同题的程序实现
+ref_mdp1.py
+
+```python
+from typing import Dict, List, Tuple, Iterable
+
+State = str
+Action = str
+Transition = Tuple[State, float, float]  # (next_state, prob, reward)
+
+# --------- MDP base ---------
+class MDP:
+    def states(self) -> Iterable[State]: ...
+    def actions(self, s: State) -> Iterable[Action]: ...
+    def transitions(self, s: State, a: Action) -> Iterable[Transition]:
+        """Yield (s', prob, reward). Probabilities over s' must sum to 1 for each (s,a)."""
+        ...
+    def is_end(self, s: State) -> bool: ...
+    @property
+    def start_state(self) -> State: ...
+
+# --------- Dice Game MDP ---------
+class DiceMDP(MDP):
+    """
+    States: 'in', 'end'
+    Actions at 'in': 'stay' or 'quit'; 'end' has no actions.
+    Rewards: stay gives +4 then stochastic termination; quit gives +10 then terminate.
+    """
+    def __init__(self): pass
+    def states(self): return ['in', 'end']
+    def actions(self, s): return ['stay','quit'] if s == 'in' else []
+    def transitions(self, s, a):
+        if s == 'end': return []
+        if a == 'quit':
+            yield ('end', 1.0, 10.0)
+        elif a == 'stay':
+            yield ('in', 2/3, 4.0)
+            yield ('end', 1/3, 4.0)
+        else:
+            raise ValueError(a)
+    def is_end(self, s): return s == 'end'
+    @property
+    def start_state(self): return 'in'
+
+# --------- Policy evaluation ---------
+def policy_evaluation(mdp: MDP, policy: Dict[State, Action], gamma: float=1.0, eps: float=1e-8,
+                      max_iters: int=10_000) -> Dict[State, float]:
+    V = {s: 0.0 for s in mdp.states()}
+    for t in range(max_iters):
+        delta = 0.0
+        V_prev = V.copy()
+        for s in mdp.states():
+            if mdp.is_end(s):
+                V[s] = 0.0
+                continue
+            a = policy[s]
+            val = 0.0
+            for sp, p, r in mdp.transitions(s, a):
+                val += p * (r + gamma * V_prev[sp])
+            delta = max(delta, abs(val - V_prev[s]))
+            V[s] = val
+        if delta <= eps:
+            break
+    return V
+
+# --------- Value iteration ---------
+def value_iteration(mdp: MDP, gamma: float=1.0, eps: float=1e-8, max_iters: int=10_000):
+    V = {s: 0.0 for s in mdp.states()}
+    for t in range(max_iters):
+        delta = 0.0
+        V_prev = V.copy()
+        for s in mdp.states():
+            if mdp.is_end(s):
+                V[s] = 0.0
+                continue
+            best = float('-inf')
+            for a in mdp.actions(s):
+                q = 0.0
+                for sp, p, r in mdp.transitions(s, a):
+                    q += p * (r + gamma * V_prev[sp])
+                if q > best:
+                    best = q
+            delta = max(delta, abs(best - V_prev[s]))
+            V[s] = best
+        if delta <= eps:
+            break
+    # greedy policy
+    policy = {}
+    Q = {}
+    for s in mdp.states():
+        if mdp.is_end(s): continue
+        best_a, best_q = None, float('-inf')
+        for a in mdp.actions(s):
+            q = 0.0
+            for sp, p, r in mdp.transitions(s, a):
+                q += p * (r + gamma * V[sp])
+            Q[(s,a)] = q
+            if q > best_q:
+                best_q, best_a = q, a
+        policy[s] = best_a
+    return V, policy, Q
+
+# --------- Demo ---------
+if __name__ == "__main__":
+    mdp = DiceMDP()
+    # Policy: always stay
+    pi_stay = {'in':'stay'}
+    V_stay = policy_evaluation(mdp, pi_stay, gamma=1.0, eps=1e-10)
+    print("V^pi(stay) at 'in':", V_stay['in'])  # 12 (γ=1)
+
+    # Policy: always quit
+    pi_quit = {'in':'quit'}
+    V_quit = policy_evaluation(mdp, pi_quit, gamma=1.0)
+    print("V^pi(quit) at 'in':", V_quit['in'])  # 10
+
+    # Value iteration
+    Vstar, pistar, Q = value_iteration(mdp, gamma=1.0, eps=1e-10)
+    print("V* at 'in':", Vstar['in'], "pi*:", pistar['in'])
+
+```
+
+## **Week 4-2：4-2mdp2-w4-2**
+
+# 课堂练习 — 同题：3×4 火山网格世界（PI vs VI vs Q 迭代）
+
+世界：3×4，墙 (2,2)；目标 G=(1,4) 奖励 +1 吸收；岩浆 L=(2,4) 奖励 −1 吸收；
+步长奖励 r_step=−0.04；滑移 p=0.2；γ=0.99；动作 U/D/L/R（含垂直滑移）。
+
+任务：
+1) 从 $V^{(0)}=0$ 做一次 VI 扫描得 $V^{(1)}$（演示一个格子完整计算）。
+2) “全向右”策略做 3 次策略评估；给出 $max_s |V^{(t)}−V^{(t−1)}|$.
+3) 用当前 V 做策略改进并画出贪心箭头。
+4) 做两轮 PI（每轮评估 5 步）与两步 VI，比较值与策略。
+5) 残差 ε=0.01、γ=0.99 时给出 $||V−V^*||_∞$ 上界。
+
+# 课后作业 — 同题程序实现：PI · VI · Q 迭代（GridWorld）
+
+实现：
+1) value_iteration（含残差日志与停止）。
+2) policy_iteration（迭代评估+贪心改进，返回 V*、π*）。
+3) q_value_iteration。
+4) 在不同滑移/步长奖励下比较收敛步数与策略。
+5) （选做）优先级扫描 VI。
+
+提交：代码 + 一页总结（收敛曲线与贪心策略）。
+
+## 参考代码— 同题的程序实现
+ref_mdp2.py
+
+```python
+from typing import Dict, Tuple, Iterable
+State = Tuple[int,int]  # (row, col)
+Action = str            # 'U','D','L','R'
+
+class GridWorldMDP:
+    def __init__(self, rows=3, cols=4, walls={(2,2)}, goals={(1,4):1.0}, lava={(2,4):-1.0},
+                 step_reward=-0.04, slip=0.2):
+        self.R = rows; self.C = cols
+        self.walls = set(walls)
+        self.terminal = dict(goals); self.terminal.update(lava)
+        self.step_reward = step_reward; self.slip = slip
+        self.actions_list = ['U','D','L','R']
+    def states(self):
+        for r in range(1,self.R+1):
+            for c in range(1,self.C+1):
+                if (r,c) not in self.walls: yield (r,c)
+    def is_end(self,s): return s in self.terminal
+    def actions(self,s): return [] if self.is_end(s) else self.actions_list
+    def _move(self,s,a):
+        r,c=s; drc={'U':(-1,0),'D':(1,0),'L':(0,-1),'R':(0,1)}[a]
+        rr,cc=r+drc[0],c+drc[1]
+        if not (1<=rr<=self.R and 1<=cc<=self.C) or (rr,cc) in self.walls: return s
+        return (rr,cc)
+    def transitions(self,s,a):
+        if self.is_end(s): return
+        perp={'U':['L','R'],'D':['L','R'],'L':['U','D'],'R':['U','D']}[a]
+        outcomes=[(self._move(s,a),1-self.slip),
+                  (self._move(s,perp[0]),self.slip/2.0),
+                  (self._move(s,perp[1]),self.slip/2.0)]
+        probs={}
+        for sp,p in outcomes: probs[sp]=probs.get(sp,0.0)+p
+        for sp,p in probs.items():
+            r=self.terminal.get(sp,self.step_reward)
+            yield (sp,p,r)
+
+def value_iteration(mdp, gamma=0.99, eps=1e-6):
+    V={s:0.0 for s in mdp.states()}
+    iters=0
+    while True:
+        iters+=1; delta=0.0
+        for s in list(mdp.states()):
+            if mdp.is_end(s): V[s]=mdp.terminal[s]; continue
+            best=float('-inf')
+            for a in mdp.actions(s):
+                q=0.0
+                for sp,p,r in mdp.transitions(s,a):
+                    q+=p*(r+gamma*V[sp])
+                if q>best: best=q
+            delta=max(delta,abs(best-V[s])); V[s]=best
+        if delta<=eps: break
+    pi={}
+    for s in mdp.states():
+        if mdp.is_end(s): continue
+        best_a,best_q=None,float('-inf')
+        for a in mdp.actions(s):
+            q=sum(p*(r+gamma*V[sp]) for sp,p,r in mdp.transitions(s,a))
+            if q>best_q: best_q,best_a=q,a
+        pi[s]=best_a
+    return V,pi,iters
+
+def policy_evaluation(mdp, pi, gamma=0.99, eps=1e-8, max_iters=10000):
+    V={s:0.0 for s in mdp.states()}
+    for _ in range(max_iters):
+        delta=0.0; Vprev=V.copy()
+        for s in mdp.states():
+            if mdp.is_end(s): V[s]=mdp.terminal[s]; continue
+            a=pi[s]
+            val=sum(p*(r+gamma*Vprev[sp]) for sp,p,r in mdp.transitions(s,a))
+            delta=max(delta,abs(val-Vprev[s])); V[s]=val
+        if delta<=eps: break
+    return V
+
+def policy_improvement(mdp, V, gamma=0.99):
+    pi={}
+    for s in mdp.states():
+        if mdp.is_end(s): continue
+        best_a,best_q=None,float('-inf')
+        for a in mdp.actions(s):
+            q=sum(p*(r+gamma*V[sp]) for sp,p,r in mdp.transitions(s,a))
+            if q>best_q: best_q,best_a=q,a
+        pi[s]=best_a
+    return pi
+
+def policy_iteration(mdp, gamma=0.99, eval_eps=1e-8, max_pe_iters=1000):
+    pi={s:'R' for s in mdp.states() if not mdp.is_end(s)}
+    iters=0
+    while True:
+        iters+=1
+        V=policy_evaluation(mdp, pi, gamma=gamma, eps=eval_eps, max_iters=max_pe_iters)
+        new_pi=policy_improvement(mdp, V, gamma=gamma)
+        if new_pi==pi: break
+        pi=new_pi
+    return V,pi,iters
+
+def q_value_iteration(mdp, gamma=0.99, eps=1e-6):
+    Q={(s,a):0.0 for s in mdp.states() for a in mdp.actions(s)}
+    def best_next(sp):
+        return 0.0 if mdp.is_end(sp) else max(Q[(sp,a)] for a in mdp.actions(sp))
+    iters=0
+    while True:
+        iters+=1; delta=0.0
+        for s in mdp.states():
+            if mdp.is_end(s):
+                for a in ['U','D','L','R']:
+                    if (s,a) in Q: Q[(s,a)]=mdp.terminal[s]
+                continue
+            for a in mdp.actions(s):
+                old=Q[(s,a)]
+                new=sum(p*(r+gamma*best_next(sp)) for sp,p,r in mdp.transitions(s,a))
+                Q[(s,a)]=new
+                delta=max(delta,abs(new-old))
+        if delta<=eps: break
+    pi={s:max(mdp.actions(s), key=lambda a: Q[(s,a)]) for s in mdp.states() if not mdp.is_end(s)}
+    return Q,pi,iters
+
+if __name__=='__main__':
+    mdp=GridWorldMDP()
+    V_vi,pi_vi,it_vi=value_iteration(mdp,eps=1e-5); print('VI sweeps:',it_vi)
+    V_pi,pi_pi,it_pi=policy_iteration(mdp); print('PI iters:',it_pi)
+    Q,pi_q,it_q=q_value_iteration(mdp,eps=1e-5); print('Q-Iter iters:',it_q)
+```
+
+## **Week 5-1：5-1games1-w5-1**
+
+# 课堂练习 — 同题：井字棋（Minimax/Alpha–Beta/估值）
+
+**表示** 棋盘 3×3（行优先 9 字符串），MAX='X'，MIN='O'，`.` 为空。
+**给定局面（MAX 走）**：`X.O..O...`
+
+## 任务
+1) **手算 2 层极大极小**：枚举 MAX 着法，再考虑 MIN 最优应手；叶子效用 $U\in\{+1,0,-1\}$。  
+2) **Alpha–Beta 跟踪**（次序：中心>角>边）：写出 α/β 更新与被剪枝分支。  
+3) **深度截断估值（D=3）**: 设 $\mathrm{Eval}(s)=w^\top\phi(s)$, 特征:
+   - X 的开放二连、O 的开放二连、中心占位、X 的角格数。  
+   写出紧凑公式，并在给定局面上求值。  
+4) **静止搜索**：给出一个深度 1 评估失真（地平线效应）的局面，并提出在 TTT 中的战术延伸规则。
+
+# 课后作业 — 同题程序实现：井字棋的极大极小、Alpha–Beta 与估值
+
+实现：
+1) **博弈接口**：`legal_moves`、`next_state`、`is_terminal`、`winner`、打印函数。  
+2) **minimax(s, depth)**（记录节点数）；**alphabeta(s, depth)**（中心>角>边排序 + 置换表）。  
+3) **估值** $w^\top\phi$：(open-X-2s, open-O-2s, centerX, cornerX)。做网格搜索以提升对 depth-2 minimax 的胜率。  
+4) **实验**：在 50 个随机中盘局面对比节点展开数与 αβ 加速比，绘制“深度-节点数”曲线。  
+5) **（选做）** 迭代加深（含时限）；killer move 排序。
+
+## 参考代码— 同题的程序实现
+ref_games1.py
+
+```python
+from typing import List, Tuple, Optional, Dict
+
+MAX, MIN = 'X', 'O'
+
+def pretty(s: str) -> str:
+    g = [s[i:i+3] for i in range(0,9,3)]
+    return "\n".join(" ".join(c if c != '.' else '_' for c in row) for row in g)
+
+def player_to_move(s: str) -> str:
+    return MAX if s.count(MAX) == s.count(MIN) else MIN
+
+def legal_moves(s: str) -> List[int]:
+    return [i for i,c in enumerate(s) if c == '.']
+
+def next_state(s: str, a: int) -> str:
+    p = player_to_move(s)
+    return s[:a] + p + s[a+1:]
+
+def lines() -> List[Tuple[int,int,int]]:
+    return [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+
+def winner(s: str) -> Optional[str]:
+    for a,b,c in lines():
+        if s[a] != '.' and s[a] == s[b] == s[c]:
+            return s[a]
+    return None
+
+def is_terminal(s: str) -> bool:
+    return winner(s) is not None or '.' not in s
+
+def utility(s: str) -> int:
+    w = winner(s)
+    if w == MAX: return +1
+    if w == MIN: return -1
+    return 0
+
+# ---- Evaluation ----
+def eval_features(s: str) -> Tuple[int,int,int,int]:
+    # (open-X-2s, open-O-2s, centerX, cornerX)
+    openX = openO = 0
+    for a,b,c in lines():
+        line = s[a]+s[b]+s[c]
+        if line.count(MIN)==0 and line.count(MAX)==2: openX += 1
+        if line.count(MAX)==0 and line.count(MIN)==2: openO += 1
+    centerX = 1 if s[4]==MAX else 0
+    corners = [0,2,6,8]
+    cornerX = sum(1 for i in corners if s[i]==MAX)
+    return (openX, openO, centerX, cornerX)
+
+def eval_linear(s: str, w=(3, -3, 1, 1)) -> int:
+    f = eval_features(s)
+    return sum(wi*fi for wi,fi in zip(w,f))
+
+# ---- Minimax / Alpha-Beta ----
+def minimax(s: str, depth: int) -> Tuple[int, Optional[int], int]:
+    """Return (value, best_move, nodes) from perspective of player_to_move(s)."""
+    nodes = 0
+    def mm(state, d) -> int:
+        nonlocal nodes
+        nodes += 1
+        if is_terminal(state) or d == 0:
+            return utility(state) if is_terminal(state) else eval_linear(state)
+        p = player_to_move(state)
+        moves = legal_moves(state)
+        if p == MAX:
+            best = -10**9
+            for a in moves:
+                best = max(best, mm(next_state(state,a), d-1))
+            return best
+        else:
+            best = 10**9
+            for a in moves:
+                best = min(best, mm(next_state(state,a), d-1))
+            return best
+    p = player_to_move(s)
+    best_move = None
+    best_val = -10**9 if p==MAX else 10**9
+    for a in legal_moves(s):
+        v = mm(next_state(s,a), depth-1)
+        if (p==MAX and v>best_val) or (p==MIN and v<best_val):
+            best_val, best_move = v, a
+    return best_val, best_move, nodes
+
+def move_order_heuristic(s: str, moves: List[int]) -> List[int]:
+    # center > corners > edges
+    center = [4]; corners = [0,2,6,8]; edges = [1,3,5,7]
+    order = center + corners + edges
+    return sorted(moves, key=lambda a: order.index(a) if a in order else 99)
+
+def alphabeta(s: str, depth: int, w=(3,-3,1,1)) -> Tuple[int, Optional[int], int, int]:
+    """Return (value, best_move, nodes, prunes)."""
+    nodes = prunes = 0
+    TT: Dict[Tuple[str,int], int] = {}  # simple transposition: (state,depth)->value
+
+    def ab(state, d, alpha, beta) -> int:
+        nonlocal nodes, prunes
+        nodes += 1
+        key = (state, d)
+        if key in TT:
+            return TT[key]
+        if is_terminal(state) or d == 0:
+            val = utility(state) if is_terminal(state) else eval_linear(state, w)
+            TT[key] = val
+            return val
+        p = player_to_move(state)
+        moves = move_order_heuristic(state, legal_moves(state))
+        if p == MAX:
+            val = -10**9
+            for a in moves:
+                val = max(val, ab(next_state(state,a), d-1, alpha, beta))
+                alpha = max(alpha, val)
+                if alpha >= beta:
+                    prunes += 1
+                    break
+            TT[key]=val; return val
+        else:
+            val = 10**9
+            for a in moves:
+                val = min(val, ab(next_state(state,a), d-1, alpha, beta))
+                beta = min(beta, val)
+                if alpha >= beta:
+                    prunes += 1
+                    break
+            TT[key]=val; return val
+
+if __name__ == "__main__":
+    s = "X.O..O..."
+    print(pretty(s))
+    print("Player to move:", player_to_move(s))
+    v1, a1, n1 = minimax(s, depth=4)
+    print("Minimax depth=4:", v1, "move", a1, "nodes", n1)
+    v2, a2, n2, p2 = alphabeta(s, depth=6)
+    print("AlphaBeta depth=6:", v2, "move", a2, "nodes", n2, "prunes", p2)
+
+```
+
+## **Week 5-2：5-2games2-w5-2**
+
+# 课堂练习 — 同题：掷骰到 21（含机会结点的 Expectimax）
+
+**规则**  
+分数 $s\in$ { $0,\dots$ }. 每回合 MAX 选 **roll** 或 **stop**：  
+- **stop**：终止收益 $U=s$；  
+- **roll**: 进入机会结点; 加上 $X\sim\mathrm{Unif}$ { $1,\dots,6$ }. 若新分 $>21$（爆），终止收益 $U=-10$。
+
+**任务**
+1) 从 $s=18$ 做 **2 层 expectimax**：在**风险中性** $U(x)=x$ 下比较 `roll` 和 `stop` 的值。  
+2) **风险厌恶** $U(x)=\sqrt{\max(x,0)}-2\cdot\max(-x,0)$ 下重算 (1)。决策是否变化？  
+3) **深度截断 $D=4$ + 估值**：给出 $\phi(s)=(s,\ \mathbb{1}[s\ge 20],\ \mathbb{1}[s\le 15])$ 与线性 $w$，在 $s=12$ 处评一个子树。  
+4) **采样**：在掷骰机会结点用 $k=3$ 次样本估计期望；讨论方差与偏差。
+
+**提交**：手绘树与数值（给出计算步骤）。
+
+# 课后作业 — 同题程序实现：掷骰到 21 的期望极大
+
+实现：
+1) **带机会结点的接口**：`succ_max(s)`、`succ_chance(s, a)`（结果与概率）、`is_terminal(s)`、`utility(s)`。  
+2) **expectimax(state, depth, utility_fn, eval_fn)**：支持 MAX/CHANCE，含深度截断与估值。  
+3) **风险分析**：比较以下效用下的策略：(a) 风险中性 $U(x)=x$；(b) 风险厌恶 $U(x)=\sqrt{x_+}-\lambda x_-$, $\lambda\in\$ {1,2,4}。  
+4) **采样期望极大**：在机会结点用 $k\in\{2,4,8\}$ 样本；报告与精确值的误差及节点数。  
+5) **（选做）** MCTS（UCT）10k 次 rollout；比较在 $s=18$ 的选招。
+
+提交：代码 + 简短报告（值/节点计数表与“k—误差”图）。
+
+## 参考代码— 同题的程序实现
+ref_games2.py
+
+```python
+from typing import Dict, Tuple, Callable
+import random, math
+
+# --------- Dice-to-21 ---------
+TARGET = 21
+
+def utility_risk_neutral(x: int) -> float:
+    return float(x)
+
+def utility_risk_averse(x: int, lam: float=2.0) -> float:
+    xp = max(x, 0); xn = max(-x, 0)
+    return math.sqrt(xp) - lam * xn
+
+def succ_max(s: int):
+    """Return list of actions at MAX state s."""
+    return ["stop", "roll"]
+
+def succ_chance(s: int, a: str):
+    """Return list of outcomes (prob, next_state, immediate_reward_flag)."""
+    if a == "stop":
+        # terminal handled by is_terminal/utility; no chance children
+        return []
+    # roll: outcomes 1..6, uniform
+    outcomes = []
+    for x in range(1,7):
+        sp = s + x
+        outcomes.append((1/6.0, sp))
+    return outcomes
+
+def is_terminal(s: int, last_action: str=None) -> bool:
+    if last_action == "stop": return True
+    return s > TARGET
+
+def terminal_payoff(s: int, last_action: str=None) -> int:
+    if last_action == "stop":
+        return s
+    # bust
+    return -10
+
+# --------- Expectimax ---------
+def expectimax(state: int, depth: int,
+               utility_fn: Callable[[int], float]=utility_risk_neutral,
+               eval_fn: Callable[[int], float]=lambda s: s,
+               last_action: str=None):
+    """
+    Returns (value, best_action, nodes) from MAX perspective under chance.
+    Depth-limited: at depth==0, use eval_fn(state).
+    """
+    nodes = 0
+    from functools import lru_cache
+
+    @lru_cache(maxsize=None)
+    def max_node(s: int, d: int):
+        nonlocal nodes
+        nodes += 1
+        if is_terminal(s, None):  # bust state (s>TARGET)
+            return utility_fn(terminal_payoff(s, None)), None
+        if d == 0:
+            return eval_fn(s), None
+        best_val = -1e18
+        best_act = None
+        for a in succ_max(s):
+            if a == "stop":
+                val = utility_fn(terminal_payoff(s, "stop"))
+            else:
+                val = chance_node(s, a, d-1)
+            if val > best_val:
+                best_val, best_act = val, a
+        return best_val, best_act
+
+    @lru_cache(maxsize=None)
+    def chance_node(s: int, a: str, d: int):
+        nonlocal nodes
+        nodes += 1
+        # expectation over outcomes
+        ev = 0.0
+        for p, sp in succ_chance(s, a):
+            if is_terminal(sp, None):
+                ev += p * utility_fn(terminal_payoff(sp, None))
+            elif d == 0:
+                ev += p * eval_fn(sp)
+            else:
+                val, _ = max_node(sp, d)
+                ev += p * val
+        return ev
+
+    val, act = max_node(state, depth)
+    return val, act, nodes
+
+# --------- Sampling Expectimax ---------
+def expectimax_sample(state: int, depth: int, k: int=4,
+                      utility_fn: Callable[[int], float]=utility_risk_neutral,
+                      eval_fn: Callable[[int], float]=lambda s: s):
+    """
+    Monte Carlo at chance nodes: sample k outcomes (with replacement).
+    """
+    nodes = 0
+    def max_node(s: int, d: int):
+        nonlocal nodes
+        nodes += 1
+        if is_terminal(s, None):
+            return utility_fn(terminal_payoff(s, None)), None
+        if d == 0:
+            return eval_fn(s), None
+        best_val, best_act = -1e18, None
+        for a in succ_max(s):
+            if a == "stop":
+                val = utility_fn(terminal_payoff(s, "stop"))
+            else:
+                val = chance_node(s, a, d-1)
+            if val > best_val:
+                best_val, best_act = val, a
+        return best_val, best_act
+
+    def chance_node(s: int, a: str, d: int):
+        nonlocal nodes
+        nodes += 1
+        ev = 0.0
+        for _ in range(k):
+            x = random.randint(1,6)
+            sp = s + x
+            if is_terminal(sp, None):
+                ev += utility_fn(terminal_payoff(sp, None))
+            elif d == 0:
+                ev += eval_fn(sp)
+            else:
+                v, _ = max_node(sp, d)
+                ev += v
+        return ev / k
+
+    return max_node(state, depth) + (nodes,)
+
+# --------- Simple evals ---------
+def eval_linear(s: int):
+    # features: (score, near_target, far)
+    return 1.0*s + 5.0*(1 if s>=20 else 0) - 3.0*(1 if s<=15 else 0)
+
+if __name__ == "__main__":
+    for depth in [2,3,4]:
+        v, a, n = expectimax(18, depth, utility_fn=utility_risk_neutral, eval_fn=eval_linear)
+        print(f"depth={depth} -> value={v:.3f}, act={a}, nodes={n}")
+    v2, a2, n2 = expectimax(18, 3, utility_fn=lambda x: (x if x>=0 else -2*abs(x)), eval_fn=eval_linear)
+    print("risk-averse depth=3 ->", v2, a2, n2)
+    vs, as_, ns = expectimax_sample(18, 4, k=4, eval_fn=eval_linear)
+    print("sampling depth=4 k=4 ->", vs, as_, ns)
+```
+## **Week 6-1：6-1csps1-w6-1**
+
+# 课堂练习 — 同题：澳大利亚地图着色
+
+**变量与域**  
+$X=${$\mathrm{WA},\mathrm{NT},\mathrm{SA},\mathrm{Q},\mathrm{NSW},\mathrm{V},\mathrm{T}$}.  
+$\mathrm{Dom}=${$\text{R},\text{G},\text{B}$}.
+
+**二元约束**（相邻不同色）  
+边： (WA,NT)、(WA,SA)、(NT,SA)、(NT,Q)、(SA,Q)、(SA,NSW)、(SA,V)、(Q,NSW)、(NSW,V)。  
+塔斯马尼亚 T 与大陆无邻接 ⇒ 可独立处理。
+
+## 任务
+1) **因子图草图**：省份画成圆, $[u\neq v]$ 因子画方框.  
+2) **手算回溯（前几步）**  
+   - 用 **MRV** + **度数**打破并列：先给 SA 着色（度最高）。  
+   - 试 SA=R，前视删减邻居域；继续 3–4 次赋值；记录冲突与回溯。  
+3) **分解**：大陆着色完成后，T 任取（R/G/B）。  
+4) **提交**：一个一致着色方案与赋值顺序。
+
+_说明_：任一一致解均可；请展示剪枝过程与理由。
+
+# 课后作业 — 同题程序实现：澳大利亚地图着色（CSP）
+
+实现一个小型 CSP 工具并求解该地图：
+
+1) **CSP 核心**  
+   - `variables`、`domains` 与二元 `constraints`（谓词）。  
+   - 提供 `neighbors(var)`。
+
+2) **回溯搜索**  
+   - 变量顺序：**MRV + 度数打平**；  
+   - 取值顺序：最少约束值（LCV）；  
+   - **前视检查**（Forward Checking），带撤销栈。
+
+3) **日志与指标**  
+   - 统计节点数、回溯次数；输出赋值顺序与每步前视后的域。
+
+4) **实验**  
+   - 比较：朴素回溯 / +MRV / +MRV+LCV / +MRV+LCV+FC；  
+   - 在澳大利亚数据集上报告节点数；可选再做 **N 皇后（N=8）**。
+
+5) **（选做）**  
+   - 实现 **AC-3** 并与前视比较；  
+   - 增加**排程**（表述一），解一个小实例。
+
+**提交**：代码 + ≤2 页小报告（节点数表格与简要分析）。
+
+## 参考代码— 同题的程序实现
+ref_csps1.py
+
+```python
+from typing import Dict, List, Callable, Set, Tuple, Optional, Iterable
+
+Assignment = Dict[str, str]
+Domain = Dict[str, List[str]]
+Constraint = Callable[[str, str, str, str], bool]  # (xi, vi, xj, vj) -> ok?
+
+class CSP:
+    def __init__(self, variables: List[str], domains: Domain):
+        self.variables = variables
+        self.domains = {v: list(domains[v]) for v in variables}
+        self.neigh: Dict[str, Set[str]] = {v: set() for v in variables}
+        self.binary_constraints: List[Tuple[str, str, Constraint]] = []
+
+    def add_binary_constraint(self, xi: str, xj: str, pred: Constraint):
+        self.neigh[xi].add(xj)
+        self.neigh[xj].add(xi)
+        self.binary_constraints.append((xi, xj, pred))
+        self.binary_constraints.append((xj, xi, lambda a,va,b,vb,pred=pred: pred(b,vb,a,va)))
+
+    def neighbors(self, x: str) -> Set[str]:
+        return self.neigh[x]
+
+    def consistent_pair(self, xi: str, vi: str, xj: str, vj: str) -> bool:
+        # check constraints involving (xi,xj)
+        for a,b,p in self.binary_constraints:
+            if a==xi and b==xj:
+                if not p(xi,vi,xj,vj): return False
+        return True
+
+# ---------- Heuristics ----------
+def mrv(assignment: Assignment, csp: CSP) -> str:
+    unassigned = [x for x in csp.variables if x not in assignment]
+    # min remaining values
+    lens = {x: sum(all(csp.consistent_pair(x,v, y, assignment[y]) for y in csp.neighbors(x) if y in assignment)
+                   for v in csp.domains[x]) for x in unassigned}
+    m = min(lens.values())
+    candidates = [x for x in unassigned if lens[x]==m]
+    if len(candidates)==1:
+        return candidates[0]
+    # degree tie-break: choose variable with most constraints on unassigned vars
+    def degree(x): 
+        return sum(1 for y in csp.neighbors(x) if y not in assignment)
+    candidates.sort(key=lambda x: -degree(x))
+    return candidates[0]
+
+def lcv(x: str, assignment: Assignment, csp: CSP) -> List[str]:
+    # least-constraining value ordering
+    def score(v):
+        cnt = 0
+        for y in csp.neighbors(x):
+            if y in assignment: 
+                continue
+            for w in csp.domains[y]:
+                if not csp.consistent_pair(x,v,y,w):
+                    cnt += 1
+        return cnt
+    return sorted(csp.domains[x], key=score)
+
+# ---------- Forward Checking with undo ----------
+def forward_check(x: str, v: str, assignment: Assignment, csp: CSP):
+    # prune domains of neighbors; return list of (var, removed_values) to undo
+    removed = []
+    for y in csp.neighbors(x):
+        if y in assignment: 
+            continue
+        to_remove = [w for w in csp.domains[y] if not csp.consistent_pair(x,v,y,w)]
+        if to_remove:
+            csp.domains[y] = [w for w in csp.domains[y] if w not in to_remove]
+            removed.append((y, to_remove))
+            if not csp.domains[y]:
+                return False, removed
+    return True, removed
+
+def undo(removed, csp: CSP):
+    for y, vals in removed:
+        # restore in any order; keep unique
+        cur = set(csp.domains[y])
+        for w in vals:
+            if w not in cur:
+                csp.domains[y].append(w)
+
+# ---------- Backtracking ----------
+def backtracking_search(csp: CSP, use_lcv=True, use_fc=True):
+    assignment: Assignment = {}
+    nodes = 0; backtracks = 0
+    order_log = []
+
+    def backtrack():
+        nonlocal nodes, backtracks
+        if len(assignment)==len(csp.variables):
+            return True
+        x = mrv(assignment, csp)
+        values = lcv(x, assignment, csp) if use_lcv else list(csp.domains[x])
+        for v in values:
+            nodes += 1
+            # check consistency with assigned neighbors
+            ok = all(csp.consistent_pair(x,v,y,assignment[y]) for y in csp.neighbors(x) if y in assignment)
+            if not ok: 
+                continue
+            assignment[x]=v; order_log.append((x,v))
+            removed = []
+            if use_fc:
+                ok, removed = forward_check(x,v,assignment,csp)
+            if ok:
+                if backtrack():
+                    return True
+            # undo
+            if use_fc:
+                undo(removed, csp)
+            order_log.pop(); assignment.pop(x, None)
+        backtracks += 1
+        return False
+
+    success = backtrack()
+    return success, assignment, nodes, backtracks, order_log
+
+# ---------- Australia instance ----------
+def australia_csp():
+    vars = ["WA","NT","SA","Q","NSW","V","T"]
+    dom = {v:["R","G","B"] for v in vars}
+    csp = CSP(vars, dom)
+    edges = [("WA","NT"),("WA","SA"),("NT","SA"),("NT","Q"),
+             ("SA","Q"),("SA","NSW"),("SA","V"),("Q","NSW"),("NSW","V")]
+    ne = lambda xi,vi,xj,vj: vi != vj
+    for a,b in edges:
+        csp.add_binary_constraint(a,b,ne)
+    return csp
+
+if __name__ == "__main__":
+    csp = australia_csp()
+    ok, sol, nodes, backs, log = backtracking_search(csp, use_lcv=True, use_fc=True)
+    print("Solved:", ok, "nodes:", nodes, "backtracks:", backs)
+    print("Solution:", sol)
+    print("Order:", log)
+```
+
 
 
 
