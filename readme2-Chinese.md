@@ -685,6 +685,43 @@ if __name__ == "__main__":
 
 ```
 
+## **Week 3-2：3-2search2-w3-2**
+
+# 课堂练习 — 同题：带约束 → 松弛 → A*
+
+**原问题（带约束的交通）**  
+状态  $s=(\text{loc}, \Delta)$, $\Delta=$ `#` walk- `#` tram $\ge 0$.  
+起点 $(1,0)$, 终点  $(n,\Delta\ge 0)$. 动作：
+- walk: $(loc,\Delta)\to(loc+1,\Delta+1)$, 代价 1  
+- tram: $(loc, \Delta)\to (2\cdot loc,\Delta-1)$ （需  $\Delta-1\ge 0$)，代价 2
+
+**松弛问题**：移除 $\Delta\ge0$ 约束；状态仅为 **location**。  
+计算 $\mathrm{FutureCost}_{\text{rel}}(\text{loc})$ （在**反向**松弛图上用 UCS）。
+
+**启发**： $h((\text{loc},\Delta)):=\mathrm{FutureCost}_{\text{rel}}(\text{loc})$.
+
+## 任务
+1) 用“松弛 ⇒ 一致”定理证明 $h$ 一致。  
+2) $n=30$ 时手算 A* 前 8 次弹出（写 $g+h$）并与 UCS 对比。  
+3) 列 loc=1..16 的  $\mathrm{FutureCost}_{\text{rel}}(\text{loc})$ 表。  
+4) 进阶: $h_0=0$, $h_{\text{walk}}=n-\text{loc}$, 验证 $h_{\max}=\max(h,h_{\text{walk}})$  一致。
+
+# 课后练习作业 — A* 与松弛启发（同题）
+
+实现：
+1) **A\***（以 `cost' = cost + h(s') - h(s)` 的 UCS 实现），输出最优路径/代价与节点统计；  
+2) **松弛启发**  $h_{\text{rel}}$ ：在**反向松弛问题**上用 UCS 求所有点的过去代价 ⇒ 即松弛的未来代价；  
+3) 基线: $h_0=0$, $h_{\text{walk}}(\text{loc})=n-\text{loc}$;  
+4) 组合: $h_{\max}=\max(h_{\text{rel}},h_{\text{walk}})$.
+
+**实验** $n\in\{50,200,1000\}$:
+- A* 与 UCS 的最优代价一致；  
+- **展开节点数**与**frontier 峰值**：UCS 与 A* ($h_0,h_{\text{walk}},h_{\text{rel}}, h_{\max}$) 对比;  
+- 程序验证所有扩展边满足 `cost' ≥ 0`（一致性）；  
+- 选做：绘图比较启发强弱与展开量。
+
+**选学（结构化感知机）**：给定目标路径，学习 walk/tram 代价并用 A* 复现。
+
 
 
 
