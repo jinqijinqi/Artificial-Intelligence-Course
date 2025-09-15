@@ -450,7 +450,7 @@ Implement the **TransportationProblem(n, unit_cost=False)** and the following al
 3) **Dynamic programming** (memoized) for acyclic graphs: compute FutureCost(1) and reconstruct an optimal path.  
 4) **Uniform Cost Search (UCS)** for non-negative costs (default 1/2), return optimal path and cost.
 
-**Report**: for $n \in \{10, 50, 100, 500\}$  
+**Report**: for $n \in$ { 10, 50, 100, 500 }
 - optimal cost (DP and UCS must match), path length, nodes expanded (all methods), peak frontier size (BFS/DFID/UCS).  
 - discuss when DFID beats BFS in space; when UCS outperforms BFS under non-equal costs.
   
