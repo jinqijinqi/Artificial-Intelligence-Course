@@ -662,7 +662,7 @@ if __name__ == "__main__":
 
 
 
-# All Projects (Project 1, 2, 3, 7 are necessarily required; Others are encouraged)
+# All Projects (Project 1, 2, 3, 4，7 are necessarily required; Others are encouraged)
 
 1. (Due Thursday of Week 2) Homework 1 -- PyTorch Installation (brief description)!<br/>
    [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
