@@ -1,6 +1,16 @@
 # UESTC Artificial Intelligence Course (2025-2026)
 # Lecturer: Jin Qi
 # You are welcome!
+---
+**课程考核**
+
+算法讨论 (10%): 回归与分类, 诗歌GPT
+
+课堂练习 (30%)
+
+课后作业 (40%)
+
+项目： (20%)
 
 ---
 
@@ -1999,7 +2009,7 @@ if __name__ == "__main__":
 
 ```
 
-# 所有作业（作业1，2，3，7，8必做，作业4，5，6必选一个，但鼓励大家都选）
+# 所有作业（作业1，2，3，4，7必做，作业5，6可选）
 1. (第二周周四截止）Homework 1--Pytorch Installation 简述!<br/>
    [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/get-started/locally/)<br/>
