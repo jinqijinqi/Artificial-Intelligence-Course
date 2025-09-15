@@ -197,7 +197,7 @@ if __name__ == "__main__":
     print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
 
 ```
-## Week 2. (2-2learning2-w2-1)
+## Week 2-1. (2-2learning2-w2-1)
 
 **Part A — GD / SGD / Minibatch**  
 Implement `fit_linear(X,y, method, lr, epochs, batch_size, lr_schedule)` with:
@@ -330,9 +330,98 @@ class TinyTwoLayer:
         return (yhat >= 0.5).astype(int)
 ```
 
+## Week 2-2. (2-3learning3-w2-2)
 
+# In Class — Same Problem, Two Tracks
 
+## Track A — Backprop by hand (squared loss)
+Given $w=[3,1]$, $\phi(x)=[1,2]$, $y=2$.
+1) Forward: score, residual, loss.  
+2) Backward: compute $\nabla_w L$ via the computation graph.  *(Answer: $[6,12]$).*
+
+## Track B — One K-means iteration
+Points: (0,0),(0,3),(3,0),(3,3), plus jitter points. $K=2$, $\mu_1=(0,0)$, $\mu_2=(3,3)$.
+1) Assign by Euclidean distance. 2) Update means. 3) Compare objective before/after.
+
+**Submission**: key equations + numeric results (2 decimals).
+
+# Out Class Homework — SAME Problems (Implementation)
+
+**Part A — Two-layer network backprop (squared loss)**  
+Implement `forward`/`backward` for $h=\sigma(V\phi(x))$, $s=w\cdot h$, $L=(s-y)^2$; check with finite diff.
+
+**Part B — K-means with restarts/k++**  
+Implement `kmeans(X,K,init='random'|'k++',restarts=10,max_iter=100)`; compare losses across seeds.
+
+**Mini Part C — Validation for L2 & early stopping**  
+Split train/val; grid-search $\lambda\in$ { $0,10^{-3},10^{-2},10^{-1}$ }; add early stopping; report best $\lambda$ & MSE.
+
+## reference codes
+ref_backprop_two_layer.py
+```python
+import numpy as np
+def sigmoid(z): return 1/(1+np.exp(-z))
+def forward(phi, V, w, y):
+    z1 = V @ phi; h = sigmoid(z1); s = float(w @ h)
+    residual = s - float(y); loss = residual**2
+    return (phi, V, w, y, z1, h, s, residual, loss)
+def backward(cache):
+    phi, V, w, y, z1, h, s, residual, loss = cache
+    grad_w = 2.0 * residual * h
+    g = 2.0 * residual * (w * h * (1-h))
+    grad_V = np.outer(g, phi)
+    return grad_w, grad_V, loss
 ---
+ref_kmeans.py
+```python
+import numpy as np
+def kmeans_pp_init(X, K, rng):
+    n = X.shape[0]; centers = np.empty((K, X.shape[1]))
+    i0 = rng.integers(n); centers[0] = X[i0]; d2 = np.full(n, np.inf)
+    for k in range(1, K):
+        d2 = np.minimum(d2, ((X - centers[k-1])**2).sum(1))
+        probs = d2 / d2.sum(); i = rng.choice(n, p=probs); centers[k] = X[i]
+    return centers
+def kmeans(X, K, init='random', restarts=10, max_iter=100, seed=0):
+    rng = np.random.default_rng(seed); best = None
+    for _ in range(restarts):
+        if init=='k++': centers = kmeans_pp_init(X, K, rng)
+        else:
+            lo, hi = X.min(0), X.max(0); centers = rng.uniform(lo, hi, size=(K, X.shape[1]))
+        for _ in range(max_iter):
+            d2 = ((X[:,None,:]-centers[None,:,:])**2).sum(-1)
+            assign = d2.argmin(1)
+            new = centers.copy()
+            for k in range(K):
+                idx = np.where(assign==k)[0]
+                if len(idx)>0: new[k] = X[idx].mean(0)
+            if np.allclose(new, centers): centers = new; break
+            centers = new
+        loss = ((X - centers[assign])**2).sum()
+        if best is None or loss < best[-1]: best = (assign, centers, float(loss))
+    return best
+```
+ref_validation_regularization.py
+
+```python
+import numpy as np
+def add_bias_1d(x):
+    x = np.asarray(x).reshape(-1,1); return np.hstack([np.ones_like(x), x])
+def fit_ridge(X, y, lam=0.0, lr=0.1, epochs=300, early_stop=False, patience=20, X_val=None, y_val=None):
+    X = np.asarray(X); y = np.asarray(y).reshape(-1)
+    n, d = X.shape; w = np.zeros(d); best = (np.inf, w.copy()); wait = 0
+    def mse(A,b,w): e=A@w-b; return float((e**2).mean())
+    for ep in range(epochs):
+        grad = (2.0/n) * (X.T @ (X@w - y)) + lam * w
+        w -= lr * grad
+        if X_val is not None:
+            v = mse(X_val, y_val, w)
+            if v < best[0]-1e-10: best = (v, w.copy()); wait=0
+            else:
+                wait += 1
+                if early_stop and wait>=patience: break
+    return best[1] if early_stop else w
+```
 
 # All Projects (Project 1, 2, 3, 7 are necessarily required; Others are encouraged)
 
