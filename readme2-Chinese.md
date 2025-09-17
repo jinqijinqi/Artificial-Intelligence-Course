@@ -109,7 +109,7 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 这种方法同样适用于其它决策环节，并突出了可解释、可复现的AI流程对科研和工程的重要性。
 
 -----
-## 📙[请下载作业空模板.docx (请恰当修改程序所用的原始数据，保证与参考代码所用数据不一致！！！）](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx) <br/>
+## 📙[请下载作业空模板.docx (请恰当修改程序所用的原始数据，保证与参考代码所用数据不一致！！！）](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%E6%A8%A1%E6%9D%BF.docx) <br/>
 
 ## 课堂及课后作业
 
@@ -2003,66 +2003,31 @@ if __name__ == "__main__":
 ```
 
 # 项目（项目1，2，3，4，7必做，项目5，6可选）
-1. (第二周周四截止）Homework 1--Pytorch Installation 简述!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+1. (第二周周四截止）项目1--Pytorch Installation 简述!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE%201-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/get-started/locally/)<br/>
-2. (第三周周四截止）Homework 2--Learning PyTorch with Examples简述内容!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+2. (第三周周四截止）项目 2--Learning PyTorch with Examples简述内容!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE2-Learning%20PyTorch%20with%20Examples.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/pytorch_with_examples.html)<br/>
-3. (第四周周四截止）Homework 3--What is torch.nn really?简述内容!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+3. (第四周周四截止）项目 3--What is torch.nn really?简述内容!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE%203-torch-nn.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/nn_tutorial.html)<br/>
-4. (第六周周四截止）Homework 4--图像识别简述内容!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+4. (第六周周四截止）项目 4--图像识别简述内容!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE4-%E5%9B%BE%E5%83%8F%E8%AF%86%E5%88%AB.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html)<br/>
-5. (第六周周四截止） Homework 5--语音识别简述内容!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+5. (第六周周四截止） 项目 5--语音识别简述内容!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE5-%E8%AF%AD%E9%9F%B3%E8%AF%86%E5%88%AB.docx)<br/>
    [参考pytorch网页](https://pytorch.org/audio/stable/tutorials/speech_recognition_pipeline_tutorial.html)<br/>
-6. (第六周周四截止） Homework 6--文本识别简述内容!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+6. (第六周周四截止） 项目 6--文本识别简述内容!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE%206-%E6%96%87%E6%9C%AC%E8%AF%86%E5%88%AB.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
-7. (第七周周四截止） Homework 7--唐诗宋词GPT!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+7. (第七周周四截止）项目 7--唐诗宋词GPT!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE7-%E5%94%90%E8%AF%97%E5%AE%8B%E8%AF%8DGPT.docx)<br/>
    [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
-8. (第八周周四截止） Homework 8--Mario play agent简述!<br/>
-   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+8. (第八周周四截止） 项目 8--Mario play agent简述!<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE8-%E9%A9%AC%E9%87%8C%E5%A5%A5%E7%8E%A9%E5%AE%B6.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/intermediate/mario_rl_tutorial.html)<br/>
 
----
-
-# All Homework (Homework 1, 2, 3, 7，8 are required; Homework 4, 5, 6 you have to choose one, but all are encouraged)
-
-1. (Due Thursday of Week 2) Homework 1 -- PyTorch Installation (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/get-started/locally/)<br/>
-
-2. (Due Thursday of Week 3) Homework 2 -- Learning PyTorch with Examples (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/pytorch_with_examples.html)<br/>
-
-3. (Due Thursday of Week 4) Homework 3 -- What is torch.nn really? (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/nn_tutorial.html)<br/>
-
-4. (Due Thursday of Week 6) Homework 4 -- Image Recognition (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html)<br/>
-
-5. (Due Thursday of Week 6) Homework 5 -- Speech Recognition (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/audio/stable/tutorials/speech_recognition_pipeline_tutorial.html)<br/>
-
-6. (Due Thursday of Week 6) Homework 6 -- Text Recognition (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
-
-7. (Due Thursday of Week 7） Homework 7--Chinese Poem GPT (brief description)!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
-   [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
-
-8. (Due Thursday of Week 8) Homework 7 -- Mario play agent (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
-   [Reference PyTorch webpage](https://pytorch.org/tutorials/intermediate/mario_rl_tutorial.html)<br/>
 
 
 
