@@ -12,7 +12,6 @@
 
 项目： (20%)
 
----
 
 # **教师评分标准：**
 
@@ -33,13 +32,12 @@
 * **作业题目：** 第8周：实例学习——kNN图像融合方法选择
 * **提交日期：** 2024年9月27日
 
----
 
 ## 一、实验目的
 
 本实验旨在理解并实现一种基础的监督学习算法——k近邻（kNN），用于根据源图像统计量自动选择图像融合方法（加权平均或最大值融合）。该任务展示了基本的AI学习方法如何在图像融合决策中应用。
 
----
+
 
 ## 二、实验步骤
 
@@ -65,7 +63,6 @@ y_pred = knn.predict(X_test)
 print(f"预测的融合方法: {y_pred[0]}（0：平均，1：最大）")
 ```
 
----
 
 ## 三、算法与数学推导
 
@@ -81,7 +78,6 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 
   对于 $k=1$，选与新样本距离最近的训练样本的类别作为预测。
 
----
 
 ## 四、实验结果与分析
 
@@ -103,7 +99,6 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
     分类器正确预测为标签0（平均融合）。
 * 该实验说明，即使是简单的kNN方法，只要特征设计合理，也能自动完成融合方法的决策。
 
----
 
 ## 五、心得与思考
 
@@ -113,8 +108,6 @@ kNN算法对新样本，通过在特征空间找到最近邻样本来确定其�
 
 这种方法同样适用于其它决策环节，并突出了可解释、可复现的AI流程对科研和工程的重要性。
 
----------------------------
-下面是**严格按照《Artificial Intelligence: A Modern Approach》经典教材章节**编排的**周项目/作业清单与模板**。每周作业包含**姓名、学号、实验题目、实验内容（代码）、数学推导（公式/理论）、实验结果、分析与总结**等模块，适合标准本科/研究生人工智能入门课程教学。
 -----
 ## 📙[请下载作业空模板.docx (请恰当修改程序所用的原始数据，保证与参考代码所用数据不一致！！！）](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx) <br/>
 
@@ -2009,30 +2002,30 @@ if __name__ == "__main__":
 
 ```
 
-# 所有作业（作业1，2，3，4，7必做，作业5，6可选）
+# 项目（项目1，2，3，4，7必做，项目5，6可选）
 1. (第二周周四截止）Homework 1--Pytorch Installation 简述!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/get-started/locally/)<br/>
 2. (第三周周四截止）Homework 2--Learning PyTorch with Examples简述内容!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/pytorch_with_examples.html)<br/>
 3. (第四周周四截止）Homework 3--What is torch.nn really?简述内容!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/nn_tutorial.html)<br/>
 4. (第六周周四截止）Homework 4--图像识别简述内容!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html)<br/>
 5. (第六周周四截止） Homework 5--语音识别简述内容!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/audio/stable/tutorials/speech_recognition_pipeline_tutorial.html)<br/>
 6. (第六周周四截止） Homework 6--文本识别简述内容!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
 7. (第七周周四截止） Homework 7--唐诗宋词GPT!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
 8. (第八周周四截止） Homework 8--Mario play agent简述!<br/>
-   [提交作业模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+   [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
    [参考pytorch网页](https://pytorch.org/tutorials/intermediate/mario_rl_tutorial.html)<br/>
 
 ---
