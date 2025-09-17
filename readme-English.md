@@ -115,7 +115,7 @@ This approach could be extended to more complex fusion tasks, or even as a first
 
 ---
 # Weekly homework(**Submission**: paper version of short report with curves/tables) (implemented by python) (due to the next class in next week)
-## [Download empty report template here](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+## [Download empty report template here](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework-Template.docx)<br/>
 
 ## Week 1. (2-1-learning1-w1-2)
 **Part R1 — Linear regression (squared loss + GD/SGD)**  
@@ -664,34 +664,34 @@ if __name__ == "__main__":
 
 # All Projects (Project 1, 2, 3, 4，7 are necessarily required; Others are encouraged)
 
-1. (Due Thursday of Week 2) Homework 1 -- PyTorch Installation (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+1. (Due Thursday of Week 2) Project 1 -- PyTorch Installation (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project1-pytorchInstallation.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/get-started/locally/)<br/>
 
-2. (Due Thursday of Week 3) Homework 2 -- Learning PyTorch with Examples (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+2. (Due Thursday of Week 3)  Project 2 -- Learning PyTorch with Examples (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project2-Learning%20PyTorch%20with%20Examples.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/pytorch_with_examples.html)<br/>
 
-3. (Due Thursday of Week 4) Homework 3 -- What is torch.nn really? (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+3. (Due Thursday of Week 4)  Project 3 -- What is torch.nn really? (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project3-Torch-nn-Usage.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/nn_tutorial.html)<br/>
 
-4. (Due Thursday of Week 6) Homework 4 -- Image Recognition (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+4. (Due Thursday of Week 6)  Project 4 -- Image Recognition (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project4-DigitsRecognition.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html)<br/>
 
-5. (Due Thursday of Week 6) Homework 5 -- Speech Recognition (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+5. (Due Thursday of Week 6)  Project 5 -- Speech Recognition (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project5-SpeechRecognition.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/audio/stable/tutorials/speech_recognition_pipeline_tutorial.html)<br/>
 
-6. (Due Thursday of Week 6) Homework 6 -- Text Recognition (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+6. (Due Thursday of Week 6)  Project 6 -- Text Recognition (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project6-TextRecognition.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/beginner/translation_transformer.html)<br/>
 
-7. (Due Thursday of Week 7） Homework 7--Chinese Poem GPT (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E4%BD%9C%E4%B8%9A%201-%E5%91%A81-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
+7. (Due Thursday of Week 7）  Project 7--Chinese Poem GPT (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project7-Tang%20Poetry%20and%20Song%20Lyrics%20GPT.docx)<br/>
    [poemGPT](https://github.com/jinqijinqi/poemGPT/tree/main)<br/>
 
-8. (Due Thursday of Week 8) Homework 7 -- Mario play agent (brief description)!<br/>
-   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/homework1-week1-Pytorch%20Install.docx)<br/>
+8. (Due Thursday of Week 8)  Project 8 -- Mario play agent (brief description)!<br/>
+   [Submission Template](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/Project8-Mario%20Player.docx)<br/>
    [Reference PyTorch webpage](https://pytorch.org/tutorials/intermediate/mario_rl_tutorial.html)<br/>
