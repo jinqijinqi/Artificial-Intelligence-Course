@@ -682,7 +682,7 @@ if __name__ == "__main__":
 # In Class — SAME Problem with Constraint → Relaxation → A*
 
 **Original problem (constrained Transportation)**  
-State $s=(\text{loc}, \Delta)$, $\Delta=\#\text{walk}-\#\text{tram}\ge 0$.  
+State $s=(\text{loc}, \Delta)$, $\Delta=\sharp\text{walk}-\sharp\text{tram}\ge 0$.  
 Start $(1,0)$, End $(n, \Delta\ge 0)$. Actions:
 - walk: $ (loc,\Delta)\to(loc+1,\Delta+1)$, cost 1  
 - tram: $ (loc,\Delta)\to(2\cdot loc,\Delta-1)$ if $\Delta-1\ge 0$, cost 2
