@@ -487,6 +487,7 @@ def fit_ridge(X, y, lam=0.0, lr=0.1, epochs=300, early_stop=False, patience=20, 
 ref_search_algorithms.py
 
  ```python
+
 from collections import deque
 import heapq
 
@@ -730,6 +731,7 @@ if __name__ == "__main__":
 ref_search2_astar.py
 
 ```python
+
 from collections import deque
 import heapq
 
@@ -937,6 +939,7 @@ if __name__ == "__main__":
 ref_mdp1.py
 
 ```python
+
 from typing import Dict, List, Tuple, Iterable
 
 State = str
@@ -1083,6 +1086,7 @@ if __name__ == "__main__":
 ref_mdp2.py
 
 ```python
+
 from typing import Dict, Tuple, Iterable
 State = Tuple[int,int]  # (row, col)
 Action = str            # 'U','D','L','R'
@@ -1233,6 +1237,7 @@ if __name__=='__main__':
 ref_games1.py
 
 ```python
+
 from typing import List, Tuple, Optional, Dict
 
 MAX, MIN = 'X', 'O'
@@ -1401,6 +1406,7 @@ if __name__ == "__main__":
 ref_games2.py
 
 ```python
+
 from typing import Dict, Tuple, Callable
 import random, math
 
@@ -1599,6 +1605,7 @@ _说明_：任一一致解均可；请展示剪枝过程与理由。
 ref_csps1.py
 
 ```python
+
 from typing import Dict, List, Callable, Set, Tuple, Optional, Iterable
 
 Assignment = Dict[str, str]
@@ -1771,6 +1778,7 @@ if __name__ == "__main__":
 ref_csps2.py
 
 ```python
+
 from typing import Dict, List, Tuple, Callable, Optional
 import itertools, random
 
@@ -2045,7 +2053,8 @@ if __name__ == "__main__":
 ## 参考代码— 同题的程序实现
 ref_markov_bn1.py
 
-···python
+```python
+
 from typing import Dict, Tuple, List
 import itertools, math, random
 random.seed(0)
@@ -2201,7 +2210,9 @@ if __name__ == "__main__":
 
 ## 参考代码— 同题的程序实现
 ref_bayesnets2.py
-···python
+
+```python
+
 from typing import Dict, List, Tuple
 import random, math
 random.seed(0)
@@ -2382,7 +2393,9 @@ def gibbs_CA(num_iters=5000, burn=500, seed=0):
 
 ## 参考代码— 同题的程序实现
 ref_bn_learning.py
-···python
+
+```python
+
 from typing import List, Dict, Optional, Tuple
 from collections import defaultdict
 import math, random
@@ -2539,6 +2552,7 @@ if __name__ == "__main__":
     (pG_em, pR_em), hist = fit_em(mixed, init=(pG1,pR1), lambda_=1.0, iters=3, share_R=True)
     print("EM pG:", pG_em); print("LL hist:", hist)
 ```
+
 ## **Week 8-1：8-1logic1-w8-1**
 
 # 课堂练习 — 同题：Rain–Wet–Slippery 知识库
@@ -2571,7 +2585,9 @@ if __name__ == "__main__":
 
 ## 参考代码— 同题的程序实现
 ref_logic1.py
-···python
+
+```python
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Set, Iterable, Tuple, List, Optional
@@ -2668,7 +2684,7 @@ if __name__ == "__main__":
     # Contingency witness for Snow
     print("KB ∪ {Snow} satisfiable?", satisfiable(KB | {Snow}))
     print("KB ∪ {¬Snow} satisfiable?", satisfiable(KB | {Not(Snow)}))
-···
+```
 
 ## **Week 8-2：8-2logic2-w8-2**
 # 课堂练习 — 同题：学生–课程–掌握
@@ -2724,7 +2740,9 @@ E)（**选做：一阶归结**）
 
 ## 参考代码— 同题的程序实现
 ref_logic2.py
-···python
+
+```python
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Set, Tuple, Dict, Optional, Iterable, Union
@@ -2939,7 +2957,7 @@ def class_kb_demo():
 
 if __name__ == "__main__":
     print(class_kb_demo())
-···
+```
 
 ## **Week 8-2：9-conclusion-w8-2**
 
@@ -2974,7 +2992,9 @@ if __name__ == "__main__":
 
 ## 参考代码— 同题的程序实现
 ref_conclusion_tools.py
-···python
+
+```python
+
 from typing import List, Tuple, Dict, Any
 import math, heapq, random
 
@@ -3098,7 +3118,7 @@ def next_courses(goal: str="robotics") -> Dict[str, List[str]]:
         }
     }
     return M.get(goal.lower(), M["robotics"])
-···
+```
 
 
 
