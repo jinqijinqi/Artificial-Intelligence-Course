@@ -126,7 +126,9 @@ This approach could be extended to more complex fusion tasks, or even as a first
 
 **Reference codes:***
 ref_regression.py
+
 ```python
+
 import numpy as np
 
 def add_bias(x):
@@ -155,6 +157,7 @@ if __name__ == "__main__":
     w, hist = fit_linear_gd(X, y, lr=0.1, epochs=200)
     print("w* =", w)
     print("final loss =", hist[-1])
+
 ```
 
 **Part C1 — Linear classification (hinge loss subgradient)**  
@@ -167,6 +170,7 @@ if __name__ == "__main__":
 ref_classification.py
 
 ```python
+
 import numpy as np
 
 def fit_hinge_gd(X, y, lr=0.1, epochs=200, l2=0.0):
@@ -197,6 +201,7 @@ if __name__ == "__main__":
     print("w* =", w, "acc =", acc, "final hinge loss =", hist[-1])
 
 ```
+
 ## Week 2-1. (2-2learning2-w2-1)
 
 **Part A — GD / SGD / Minibatch**  
@@ -207,6 +212,7 @@ Implement `fit_linear(X,y, method, lr, epochs, batch_size, lr_schedule)` with:
 (Note: you need to load the data file `regression_nonlinear.csv`) 
 
 ```python
+
 import time, math
 import numpy as np
 
@@ -270,6 +276,7 @@ Implement polynomial degree-2, 5-bin piecewise, and cosine features; compare MSE
 (Note: you need to load the data file `regression_nonlinear.csv`) 
 
 ```python
+
 import numpy as np
 
 def phi_linear_1d(x):
@@ -293,13 +300,16 @@ def phi_bins_1d(x, B=5, lo=0.0, hi=5.0):
 def phi_periodic_1d(x, omega=3.0):
     x = np.asarray(x).reshape(-1,1)
     return np.hstack([np.ones_like(x), x, x**2, np.cos(omega*x)])
+
 ```
+
 **Part C  — Two-layer NN**  
 Train a tiny 2-layer ReLU net on [`classification_xor.csv`](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/classification_xor.csv) to 100% train accuracy.
 
 (Note: you need to load the data file `classification_xor.csv`) 
 
 ```python
+
 import numpy as np
 def relu(z): return np.maximum(z, 0.0)
 def d_relu(z): return (z > 0).astype(float)
@@ -358,7 +368,9 @@ Split train/val; grid-search $\lambda\in$ { $0,10^{-3},10^{-2},10^{-1}$ }; add e
 
 ## reference codes
 ref_backprop_two_layer.py
+
 ```python
+
 import numpy as np
 def sigmoid(z): return 1/(1+np.exp(-z))
 def forward(phi, V, w, y):
@@ -371,9 +383,12 @@ def backward(cache):
     g = 2.0 * residual * (w * h * (1-h))
     grad_V = np.outer(g, phi)
     return grad_w, grad_V, loss
----
+```
+
 ref_kmeans.py
+
 ```python
+
 import numpy as np
 def kmeans_pp_init(X, K, rng):
     n = X.shape[0]; centers = np.empty((K, X.shape[1]))
@@ -404,6 +419,7 @@ def kmeans(X, K, init='random', restarts=10, max_iter=100, seed=0):
 ref_validation_regularization.py
 
 ```python
+
 import numpy as np
 def add_bias_1d(x):
     x = np.asarray(x).reshape(-1,1); return np.hstack([np.ones_like(x), x])
@@ -458,7 +474,9 @@ Implement the **TransportationProblem(n, unit_cost=False)** and the following al
 
 ## reference codes
 ref_search_algorithms.py
+
 ```python
+
 from collections import deque
 import heapq
 
@@ -659,7 +677,520 @@ if __name__ == "__main__":
     print("UCS:", cost_ucs, path_ucs, "expansions:", exp_ucs)
 ```
 
+## Week 3-2. (3-2search2-w3-2)
 
+# In Class — SAME Problem with Constraint → Relaxation → A*
+
+**Original problem (constrained Transportation)**  
+State $s=(\text{loc}, \Delta)$, $\Delta=\#\text{walk}-\#\text{tram}\ge 0$.  
+Start $(1,0)$, End $(n, \Delta\ge 0)$. Actions:
+- walk: $ (loc,\Delta)\to(loc+1,\Delta+1)$, cost 1  
+- tram: $ (loc,\Delta)\to(2\cdot loc,\Delta-1)$ if $\Delta-1\ge 0$, cost 2
+
+**Relaxed problem**: drop $\Delta\ge 0$. State is **location** only.  
+Compute $ \mathrm{FutureCost}_{\text{rel}}(\text{loc})$ (DP or UCS on **reversed** relaxed graph).
+
+**Heuristic**: $h((\text{loc},\Delta)) := \mathrm{FutureCost}_{\text{rel}}(\text{loc})$.
+
+## Tasks
+1) Prove $h$ is **consistent** by the relaxation theorem.  
+2) For $n=30$, list first ~8 pops of A* (show $g+h$) and compare to UCS.  
+3) Fill a table of $ \mathrm{FutureCost}_{\text{rel}}(\text{loc})$ for loc=1..16.  
+4) Bonus: $h_0=0$, $h_{\text{walk}}=n-\text{loc}$, show $h_{\max}=\max(h,h_{\text{walk}})$ consistent.
+
+# Out Class Homework  — A* & Relaxed Heuristics (Same Problem)
+
+Implement:
+1) **A\***(`astar(problem, h)`) as UCS on modified cost: `cost' = cost + h(s') - h(s)`; return optimal path/cost and node counts.
+2) **Relaxed heuristic** $h_{\text{rel}}$: compute $\mathrm{FutureCost}_{\text{rel}}(\text{loc})$ via UCS on the **reversed relaxed** problem (don’t stop early).
+3) Baselines: $h_0=0$; $h_{\text{walk}}(\text{loc})=n-\text{loc}$.
+4) Combine: $h_{\max}=\max(h_{\text{rel}},h_{\text{walk}})$.
+
+**Experiments** $n\in\{50,200,1000\}$:
+- Optimal cost from A* must match UCS;  
+- **Expanded states** & **peak frontier**: UCS vs A* with $h_0,h_{\text{walk}},h_{\text{rel}},h_{\max}$;  
+- Verify programmatically that all expanded edges satisfy `cost' ≥ 0` (consistency).  
+- Optional: plot expansions vs heuristic.
+
+**Optional (Structured Perceptron)**: given target paths, learn walk/tram costs and re-run A*.
+
+# reference code
+ref_search2_astar.py
+
+```python
+from collections import deque
+import heapq
+
+# ---------- Base ----------
+class SearchProblem:
+    def start_state(self): raise NotImplementedError
+    def is_end(self, s):   raise NotImplementedError
+    def succ_and_cost(self, s):
+        """yield (action, s', cost)"""
+        raise NotImplementedError
+
+# ---------- Constrained Transportation ----------
+class ConstrainedTransportation(SearchProblem):
+    """
+    State: (loc, delta), delta = #walk - #tram >= 0
+    Start: (1, 0); End: any (n, delta>=0)
+    Actions:
+      walk: (loc, d) -> (loc+1, d+1)  cost 1
+      tram: (loc, d) -> (2*loc, d-1)  cost 2, only if d-1 >= 0 and 2*loc <= n
+    """
+    def __init__(self, n):
+        assert n >= 1
+        self.n = n
+    def start_state(self): return (1, 0)
+    def is_end(self, s): loc, d = s; return loc == self.n and d >= 0
+    def succ_and_cost(self, s):
+        loc, d = s
+        if loc < self.n:
+            yield ("walk", (loc+1, d+1), 1)
+            if d-1 >= 0 and 2*loc <= self.n:
+                yield ("tram", (2*loc, d-1), 2)
+
+# ---------- Relaxed Transportation (drop delta constraint) ----------
+class RelaxedTransportation:
+    def __init__(self, n): self.n = n
+    def neighbors(self, s):
+        if s < self.n:
+            yield (s+1, 1)
+            if 2*s <= self.n:
+                yield (2*s, 2)
+
+# ---------- UCS (for reference) ----------
+def ucs(problem):
+    start = problem.start_state()
+    pq = [(0, start)]
+    best = {start: 0}
+    parent = {}
+    explored = set()
+    expansions = 0
+    while pq:
+        cost, s = heapq.heappop(pq)
+        if s in explored: continue
+        explored.add(s); expansions += 1
+        if problem.is_end(s):
+            return reconstruct(parent, s), cost, expansions
+        for a, sp, c in problem.succ_and_cost(s):
+            nc = cost + c
+            if nc < best.get(sp, float("inf")):
+                best[sp] = nc
+                parent[sp] = (s, a, c)
+                heapq.heappush(pq, (nc, sp))
+    return None, float("inf"), expansions
+
+def reconstruct(parent, s):
+    path = []
+    while s in parent:
+        ps, a, c = parent[s]
+        path.append((a, s, c))
+        s = ps
+    path.reverse()
+    return path
+
+# ---------- A* (UCS with f=g+h) ----------
+def astar(problem, h):
+    start = problem.start_state()
+    pq = [(h(start), 0, start)]  # (f, g, s)
+    best_g = {start: 0}
+    parent = {}
+    explored = set()
+    expansions = 0
+    while pq:
+        f, g, s = heapq.heappop(pq)
+        if s in explored: continue
+        explored.add(s); expansions += 1
+        if problem.is_end(s):
+            return reconstruct(parent, s), g, expansions
+        for a, sp, c in problem.succ_and_cost(s):
+            new_g = g + c
+            new_f = new_g + h(sp)
+            if new_g < best_g.get(sp, float("inf")):
+                best_g[sp] = new_g
+                parent[sp] = (s, a, c)
+                heapq.heappush(pq, (new_f, new_g, sp))
+    return None, float("inf"), expansions
+
+# ---------- Heuristics ----------
+def h_zero(s): return 0
+
+def make_h_walk(n):
+    def h(s):
+        loc = s if isinstance(s, int) else s[0]
+        return max(0, n - loc)
+    return h
+
+def make_h_relaxed(n):
+    """
+    Compute relaxed FutureCost via UCS on the REVERSED relaxed problem.
+    Equivalent to Dijkstra from goal node n on edges:
+      (s-1)->s cost 1
+      (2*s)->s cost 2
+    """
+    INF = 10**18
+    dist = [INF]*(n+1)
+    dist[n] = 0
+    pq = [(0, n)]
+    while pq:
+        d, s = heapq.heappop(pq)
+        if d != dist[s]: continue
+        # reversed edges
+        if s - 1 >= 1:
+            v = s - 1; nd = d + 1
+            if nd < dist[v]:
+                dist[v] = nd; heapq.heappush(pq, (nd, v))
+        if 2*s <= n:
+            v = 2*s; nd = d + 2
+            if nd < dist[v]:
+                dist[v] = nd; heapq.heappush(pq, (nd, v))
+    def h(s):
+        loc = s if isinstance(s, int) else s[0]
+        return dist[loc]
+    return h
+
+def make_h_max(h1, h2):
+    return lambda s: max(h1(s), h2(s))
+
+# ---------- Consistency checker ----------
+def check_consistency(problem, h, samples=2000, seed=0):
+    import random
+    rnd = random.Random(seed)
+    for _ in range(samples):
+        s = problem.start_state()
+        for __ in range(100):
+            for a, sp, c in problem.succ_and_cost(s):
+                cprime = c + h(sp) - h(s)
+                if cprime < -1e-9:
+                    return False
+            succs = list(problem.succ_and_cost(s))
+            if not succs: break
+            a, sp, c = rnd.choice(succs)
+            s = sp
+            if problem.is_end(s): break
+    return True
+
+if __name__ == "__main__":
+    n = 60
+    prob = ConstrainedTransportation(n)
+    h0 = h_zero
+    hw = make_h_walk(n)
+    hr = make_h_relaxed(n)
+    hm = make_h_max(hw, hr)
+    _, cu, _ = ucs(prob)
+    _, c0, _ = astar(prob, h0)
+    _, cw, _ = astar(prob, hw)
+    _, cr, _ = astar(prob, hr)
+    _, cm, _ = astar(prob, hm)
+    print("Costs:", cu, c0, cw, cr, cm)
+    print("Consistent(walk)?", check_consistency(prob, hw))
+    print("Consistent(relaxed)?", check_consistency(prob, hr))
+
+```
+## Week 4-1. (4-1mdp1-w4-1)
+
+# In Class — SAME Problem: Dice Game (Policy Evaluation & Value Iteration)
+
+**Setup**  
+State space $S=\{\text{in}, \text{end}\}$. Actions at **in**: `stay` or `quit`; **end** has no actions.  
+Transitions (γ is specified):  
+- `quit`: $T(\text{in},\text{quit},\text{end})=1$, reward $R=10$.  
+- `stay`: $T(\text{in},\text{stay},\text{in})=\tfrac{2}{3}$, $T(\text{in},\text{stay},\text{end})=\tfrac{1}{3}$, reward $R=4$ on both branches.
+
+## Tasks
+1) **Closed-form** (γ=1): For policy π(stay), solve $V^{\pi}(\text{in}) = \tfrac{1}{3}(4+0) + \tfrac{2}{3}(4+V^{\pi}(\text{in}))$.  
+2) **Policy evaluation (iterative)**: with γ=1, initialize $V^{(0)}\equiv0$ and compute $V^{(t)}(\text{in})$ for t=1..5; report the max change $\Delta_t$.  
+3) **Value iteration**: initialize $V^{(0)}\equiv0$; compute $V^{(t)}$ and the greedy action $\pi^{(t)}(\text{in})$ for t=1..5. When does policy switch from `quit` to `stay`?  
+4) **Discounting**: set γ=0.5. Recompute (1)–(3). Which policy is optimal now?
+
+**Submission**: your recurrence steps, the sequence $V^{(t)}(\text{in})$, and the first t where $\pi^{(t)}$ stabilizes.
+
+# Out Class Homework — SAME Problem Programmatically: Policy Evaluation & Value Iteration on Dice MDP
+
+Implement a tiny MDP toolkit and solve the dice game:
+
+1) **MDP interface** with `states()`, `actions(s)`, `transitions(s,a)` → list of `(s', prob, reward)`, `is_end(s)`, `start_state`.  
+2) **policy_evaluation(mdp, policy, gamma, eps)** returning $V^{\pi}$ with $\max_s|Δ|\le$ eps; report iterations and runtime counts.  
+3) **value_iteration(mdp, gamma, eps)** returning $V^*, \pi^*$; also return an iteration log $(\max_s|Δ|, \pi^{(t)})$.  
+4) **Experiments**:  
+   - With γ=1: compare $V^{\pi=\text{stay}}$, $V^{\pi=\text{quit}}$, and $V^*$ (values at **in**).  
+   - With γ∈{0.0, 0.5, 0.9}: repeat; analyze when the optimal policy flips.  
+5) **(Optional)** Add a **3×4 Volcano GridWorld** MDP (slip probability p, step reward r_step, terminal rewards r_goal/r_lava) and run value iteration for 10, 20, 50 iterations to illustrate “value propagation”.
+
+**Deliverables**: code + a short report (1–2 pages) with tables/plots of $V$, greedy policy vs iteration, and conclusions.
+
+# reference code
+ref_mdp1.py
+
+```python
+from typing import Dict, List, Tuple, Iterable
+
+State = str
+Action = str
+Transition = Tuple[State, float, float]  # (next_state, prob, reward)
+
+# --------- MDP base ---------
+class MDP:
+    def states(self) -> Iterable[State]: ...
+    def actions(self, s: State) -> Iterable[Action]: ...
+    def transitions(self, s: State, a: Action) -> Iterable[Transition]:
+        """Yield (s', prob, reward). Probabilities over s' must sum to 1 for each (s,a)."""
+        ...
+    def is_end(self, s: State) -> bool: ...
+    @property
+    def start_state(self) -> State: ...
+
+# --------- Dice Game MDP ---------
+class DiceMDP(MDP):
+    """
+    States: 'in', 'end'
+    Actions at 'in': 'stay' or 'quit'; 'end' has no actions.
+    Rewards: stay gives +4 then stochastic termination; quit gives +10 then terminate.
+    """
+    def __init__(self): pass
+    def states(self): return ['in', 'end']
+    def actions(self, s): return ['stay','quit'] if s == 'in' else []
+    def transitions(self, s, a):
+        if s == 'end': return []
+        if a == 'quit':
+            yield ('end', 1.0, 10.0)
+        elif a == 'stay':
+            yield ('in', 2/3, 4.0)
+            yield ('end', 1/3, 4.0)
+        else:
+            raise ValueError(a)
+    def is_end(self, s): return s == 'end'
+    @property
+    def start_state(self): return 'in'
+
+# --------- Policy evaluation ---------
+def policy_evaluation(mdp: MDP, policy: Dict[State, Action], gamma: float=1.0, eps: float=1e-8,
+                      max_iters: int=10_000) -> Dict[State, float]:
+    V = {s: 0.0 for s in mdp.states()}
+    for t in range(max_iters):
+        delta = 0.0
+        V_prev = V.copy()
+        for s in mdp.states():
+            if mdp.is_end(s):
+                V[s] = 0.0
+                continue
+            a = policy[s]
+            val = 0.0
+            for sp, p, r in mdp.transitions(s, a):
+                val += p * (r + gamma * V_prev[sp])
+            delta = max(delta, abs(val - V_prev[s]))
+            V[s] = val
+        if delta <= eps:
+            break
+    return V
+
+# --------- Value iteration ---------
+def value_iteration(mdp: MDP, gamma: float=1.0, eps: float=1e-8, max_iters: int=10_000):
+    V = {s: 0.0 for s in mdp.states()}
+    for t in range(max_iters):
+        delta = 0.0
+        V_prev = V.copy()
+        for s in mdp.states():
+            if mdp.is_end(s):
+                V[s] = 0.0
+                continue
+            best = float('-inf')
+            for a in mdp.actions(s):
+                q = 0.0
+                for sp, p, r in mdp.transitions(s, a):
+                    q += p * (r + gamma * V_prev[sp])
+                if q > best:
+                    best = q
+            delta = max(delta, abs(best - V_prev[s]))
+            V[s] = best
+        if delta <= eps:
+            break
+    # greedy policy
+    policy = {}
+    Q = {}
+    for s in mdp.states():
+        if mdp.is_end(s): continue
+        best_a, best_q = None, float('-inf')
+        for a in mdp.actions(s):
+            q = 0.0
+            for sp, p, r in mdp.transitions(s, a):
+                q += p * (r + gamma * V[sp])
+            Q[(s,a)] = q
+            if q > best_q:
+                best_q, best_a = q, a
+        policy[s] = best_a
+    return V, policy, Q
+
+# --------- Demo ---------
+if __name__ == "__main__":
+    mdp = DiceMDP()
+    # Policy: always stay
+    pi_stay = {'in':'stay'}
+    V_stay = policy_evaluation(mdp, pi_stay, gamma=1.0, eps=1e-10)
+    print("V^pi(stay) at 'in':", V_stay['in'])  # 12 (γ=1)
+
+    # Policy: always quit
+    pi_quit = {'in':'quit'}
+    V_quit = policy_evaluation(mdp, pi_quit, gamma=1.0)
+    print("V^pi(quit) at 'in':", V_quit['in'])  # 10
+
+    # Value iteration
+    Vstar, pistar, Q = value_iteration(mdp, gamma=1.0, eps=1e-10)
+    print("V* at 'in':", Vstar['in'], "pi*:", pistar['in'])
+
+```
+
+## Week 4-2. (4-2mdp2-w4-2)
+# In Class — SAME Problem: 3×4 Volcano GridWorld (PI vs VI vs Q-Iteration)
+
+World: 3×4 grid, wall at (2,2); Goal G=(1,4) reward +1 (absorbing); Lava L=(2,4) reward −1 (absorbing);
+step reward $r_{step}=−0.04$; slip p=0.2; γ=0.99. Actions: U/D/L/R with perpendicular slip.
+
+Tasks:
+1) One VI sweep from $V^{(0)}=0$ → compute $V^{(1)}$ (show one full cell calculation).
+2) Policy evaluation (uniform-right policy) for 3 iterations; report $\max_s |V^{(t)}−V^{(t−1)}|$.
+3) Policy improvement using current V; draw greedy arrows.
+4) Compare two PI improvement rounds (PE 5 iters each) vs two VI sweeps (values/policies).
+5) With residual ε=0.01, give $||V−V^*||_\infty$ bound for γ=0.99.
+
+# Out Class Homework — SAME Problem Programmatically: PI · VI · Q-Iteration on GridWorld
+
+Implement:
+1) value_iteration(mdp, gamma, eps, async=False) with residual logs.
+2) policy_iteration(mdp, gamma, eval_eps, max_pe_iters) returning V*, π* and logs.
+3) q_value_iteration(mdp, gamma, eps).
+4) Experiments over slip∈{0.0,0.1,0.2}, r_step∈{−0.04,−0.02,0.0}.
+5) (Optional) prioritized sweeping VI.
+
+Deliverables: code + one-page summary (convergence curves + greedy policies).
+
+# reference codes
+ref_mdp2.py
+
+```python
+from typing import Dict, Tuple, Iterable
+State = Tuple[int,int]  # (row, col)
+Action = str            # 'U','D','L','R'
+
+class GridWorldMDP:
+    def __init__(self, rows=3, cols=4, walls={(2,2)}, goals={(1,4):1.0}, lava={(2,4):-1.0},
+                 step_reward=-0.04, slip=0.2):
+        self.R = rows; self.C = cols
+        self.walls = set(walls)
+        self.terminal = dict(goals); self.terminal.update(lava)
+        self.step_reward = step_reward; self.slip = slip
+        self.actions_list = ['U','D','L','R']
+    def states(self):
+        for r in range(1,self.R+1):
+            for c in range(1,self.C+1):
+                if (r,c) not in self.walls: yield (r,c)
+    def is_end(self,s): return s in self.terminal
+    def actions(self,s): return [] if self.is_end(s) else self.actions_list
+    def _move(self,s,a):
+        r,c=s; drc={'U':(-1,0),'D':(1,0),'L':(0,-1),'R':(0,1)}[a]
+        rr,cc=r+drc[0],c+drc[1]
+        if not (1<=rr<=self.R and 1<=cc<=self.C) or (rr,cc) in self.walls: return s
+        return (rr,cc)
+    def transitions(self,s,a):
+        if self.is_end(s): return
+        perp={'U':['L','R'],'D':['L','R'],'L':['U','D'],'R':['U','D']}[a]
+        outcomes=[(self._move(s,a),1-self.slip),
+                  (self._move(s,perp[0]),self.slip/2.0),
+                  (self._move(s,perp[1]),self.slip/2.0)]
+        probs={}
+        for sp,p in outcomes: probs[sp]=probs.get(sp,0.0)+p
+        for sp,p in probs.items():
+            r=self.terminal.get(sp,self.step_reward)
+            yield (sp,p,r)
+
+def value_iteration(mdp, gamma=0.99, eps=1e-6):
+    V={s:0.0 for s in mdp.states()}
+    iters=0
+    while True:
+        iters+=1; delta=0.0
+        for s in list(mdp.states()):
+            if mdp.is_end(s): V[s]=mdp.terminal[s]; continue
+            best=float('-inf')
+            for a in mdp.actions(s):
+                q=0.0
+                for sp,p,r in mdp.transitions(s,a):
+                    q+=p*(r+gamma*V[sp])
+                if q>best: best=q
+            delta=max(delta,abs(best-V[s])); V[s]=best
+        if delta<=eps: break
+    pi={}
+    for s in mdp.states():
+        if mdp.is_end(s): continue
+        best_a,best_q=None,float('-inf')
+        for a in mdp.actions(s):
+            q=sum(p*(r+gamma*V[sp]) for sp,p,r in mdp.transitions(s,a))
+            if q>best_q: best_q,best_a=q,a
+        pi[s]=best_a
+    return V,pi,iters
+
+def policy_evaluation(mdp, pi, gamma=0.99, eps=1e-8, max_iters=10000):
+    V={s:0.0 for s in mdp.states()}
+    for _ in range(max_iters):
+        delta=0.0; Vprev=V.copy()
+        for s in mdp.states():
+            if mdp.is_end(s): V[s]=mdp.terminal[s]; continue
+            a=pi[s]
+            val=sum(p*(r+gamma*Vprev[sp]) for sp,p,r in mdp.transitions(s,a))
+            delta=max(delta,abs(val-Vprev[s])); V[s]=val
+        if delta<=eps: break
+    return V
+
+def policy_improvement(mdp, V, gamma=0.99):
+    pi={}
+    for s in mdp.states():
+        if mdp.is_end(s): continue
+        best_a,best_q=None,float('-inf')
+        for a in mdp.actions(s):
+            q=sum(p*(r+gamma*V[sp]) for sp,p,r in mdp.transitions(s,a))
+            if q>best_q: best_q,best_a=q,a
+        pi[s]=best_a
+    return pi
+
+def policy_iteration(mdp, gamma=0.99, eval_eps=1e-8, max_pe_iters=1000):
+    pi={s:'R' for s in mdp.states() if not mdp.is_end(s)}
+    iters=0
+    while True:
+        iters+=1
+        V=policy_evaluation(mdp, pi, gamma=gamma, eps=eval_eps, max_iters=max_pe_iters)
+        new_pi=policy_improvement(mdp, V, gamma=gamma)
+        if new_pi==pi: break
+        pi=new_pi
+    return V,pi,iters
+
+def q_value_iteration(mdp, gamma=0.99, eps=1e-6):
+    Q={(s,a):0.0 for s in mdp.states() for a in mdp.actions(s)}
+    def best_next(sp):
+        return 0.0 if mdp.is_end(sp) else max(Q[(sp,a)] for a in mdp.actions(sp))
+    iters=0
+    while True:
+        iters+=1; delta=0.0
+        for s in mdp.states():
+            if mdp.is_end(s):
+                for a in ['U','D','L','R']:
+                    if (s,a) in Q: Q[(s,a)]=mdp.terminal[s]
+                continue
+            for a in mdp.actions(s):
+                old=Q[(s,a)]
+                new=sum(p*(r+gamma*best_next(sp)) for sp,p,r in mdp.transitions(s,a))
+                Q[(s,a)]=new
+                delta=max(delta,abs(new-old))
+        if delta<=eps: break
+    pi={s:max(mdp.actions(s), key=lambda a: Q[(s,a)]) for s in mdp.states() if not mdp.is_end(s)}
+    return Q,pi,iters
+
+if __name__=='__main__':
+    mdp=GridWorldMDP()
+    V_vi,pi_vi,it_vi=value_iteration(mdp,eps=1e-5); print('VI sweeps:',it_vi)
+    V_pi,pi_pi,it_pi=policy_iteration(mdp); print('PI iters:',it_pi)
+    Q,pi_q,it_q=q_value_iteration(mdp,eps=1e-5); print('Q-Iter iters:',it_q)
+
+```
 
 
 # All Projects (Project 1, 2, 3, 4，7 are necessarily required; Others are encouraged)
