@@ -2002,6 +2002,1106 @@ if __name__ == "__main__":
 
 ```
 
+## **Week 7-1：7-1markov-bayesnets1-w7-1**
+
+# 课堂练习 — 同题：三步一维跟踪（同时作 MRF 与 BN/HMM）
+
+**取值** $X_1,X_2,X_3\in\{0,1,2\}$。观测 $o=(0,2,2)$。
+
+**MRF 因子（无向）**  
+观测 $o_i(x_i)=\max(0,2-|x_i-o_i|)$（取 $\{0,1,2\}$）；  
+转移 $t_i(x_i,x_{i+1})=\begin{cases}2&x_i=x_{i+1}\\1&|x_i-x_{i+1}|=1\\0&\text{否则}\end{cases}$。
+
+**任务（MRF）**
+1) **精确 $Z$ 与边缘**：枚举所有非零赋值，得  
+   $Z=\sum_x \prod o_i(x_i)\,t_1(x_1,x_2)\,t_2(x_2,x_3)$，再算 $P(X_2{=}1),P(X_2{=}2)$，  
+   与**最大权重赋值**对比。  
+2) **一次 Gibbs 更新**：给定 $x_1{=}1,x_3{=}2$，仅用相关因子 $o_2,t_1,t_2$ 求 $x_2$ 三个取值的未归一化权重，  
+   归一化得到 $P(X_2=\cdot\mid X_1{=}1,X_3{=}2)$。
+
+**BN 视角（HMM）**  
+有向链 $H_1\to H_2\to H_3$，发射 $H_i\to E_i$，其中 $E_i=o_i$。  
+取 $p(H_{i+1}\mid H_i)\propto t_i$，$p(E_i\mid H_i)\propto o_i$（逐行归一化）。
+
+3) **中间态后验**：定性/枚举或前向一步算 $P(H_2\mid E_1{=}0,E_2{=}2,E_3{=}2)$。  
+4)（**可选：解释性排斥**）用告警网络 $B,E\to A$ 比较 $P(B{=}1\mid A{=}1)$ 与 $P(B{=}1\mid A{=}1,E{=}1)$。
+
+# 课后作业 — 同题程序实现：三步跟踪的 MRF 与 BN
+
+**A 部分 — MRF（精确 + Gibbs）**  
+1) 构建因子 $o_i,t_i$。枚举计算 $Z$ 与边缘 $P(X_i)$。  
+2) 实现 **Gibbs 采样**（轮换扫描），记录烧入后 $X_2$ 的计数；与精确 $P(X_2)$ 比较；  
+   画出“迭代步数—边缘误差（$\ell_\infty$）”曲线。
+
+**B 部分 — BN/HMM（精确）**  
+3) 以 $t_i,o_i$ 行归一化构建 $H_1\to H_2\to H_3$ 与 $H_i\to E_i$。  
+4) 用**枚举**或**前向-后向**算法求 $P(H_2\mid E_1{=}0,E_2{=}2,E_3{=}2)$，并与 MRF 的 $P(X_2)$ 对照。
+
+**（选做）解释性排斥**  
+5) 实现**告警 BN**（$\varepsilon$ 先验，$p(a\mid b,e)=[a=b\lor e]$），展示  
+   $P(B{=}1\mid A{=}1)=\frac{1}{2-\varepsilon}$、$P(B{=}1\mid A{=}1,E{=}1)=\varepsilon$。
+
+**提交**：代码 + 1–2 页说明（精确 vs Gibbs；BN 后验；曲线图）。
+## 参考代码— 同题的程序实现
+ref_markov_bn1.py
+
+···python
+from typing import Dict, Tuple, List
+import itertools, math, random
+random.seed(0)
+
+# ----- MRF: object tracking (3 steps) -----
+dom = [0,1,2]
+obs = {1:0, 2:2, 3:2}  # o=(0,2,2)
+
+def o(i, x):
+    return max(0, 2-abs(x-obs[i]))
+
+def t(x, y):
+    if x==y: return 2
+    if abs(x-y)==1: return 1
+    return 0
+
+def weight(assign):  # assign: (x1,x2,x3)
+    x1,x2,x3 = assign
+    return o(1,x1)*o(2,x2)*o(3,x3)*t(x1,x2)*t(x2,x3)
+
+def enumerate_exact():
+    table = []
+    Z = 0.0
+    for a in itertools.product(dom, repeat=3):
+        w = weight(a)
+        if w>0:
+            table.append((a, w))
+            Z += w
+    # marginals for X2
+    p2 = {v:0.0 for v in dom}
+    for (x1,x2,x3), w in table:
+        p2[x2] += w/Z
+    # max-weight assignment
+    max_a, max_w = max(table, key=lambda t: t[1])
+    return Z, p2, max_a, max_w
+
+def gibbs(n_iters=5000, burn_in=500):
+    # initialize randomly among support
+    x = [random.choice(dom) for _ in range(3)]
+    # If zero weight, force to support
+    def cond_prob(i, x):
+        # return distribution over dom for Xi given others
+        probs = []
+        for v in dom:
+            y = x.copy()
+            y[i]=v
+            # local factors touching i: o_i, t with neighbors
+            if i==0:
+                w = o(1,v)*t(v,y[1])
+            elif i==1:
+                w = o(2,v)*t(y[0],v)*t(v,y[2])
+            else:
+                w = o(3,v)*t(y[1],v)
+            probs.append(max(0.0,w))
+        s = sum(probs)
+        probs = [p/s if s>0 else 1.0/len(dom) for p in probs]
+        return probs
+    counts = {v:0 for v in dom}
+    for it in range(n_iters):
+        for i in range(3):
+            probs = cond_prob(i, x)
+            r = random.random(); c=0.0
+            pick = 0
+            for idx,p in enumerate(probs):
+                c += p
+                if r<=c:
+                    pick=idx; break
+            x[i]=dom[pick]
+        if it>=burn_in:
+            counts[x[1]] += 1
+    total = sum(counts.values())
+    p2_hat = {v: counts[v]/total for v in dom}
+    return p2_hat
+
+# ----- BN/HMM: H1->H2->H3, emissions E1..E3 -----
+def row_norm_row(vs):
+    s = sum(vs)
+    return [vi/s if s>0 else 1.0/len(vs) for vi in vs]
+
+# transition CPT p(h_{i+1}|h_i) from t
+trans = {x: row_norm_row([t(x,y) for y in dom]) for x in dom}
+# emission CPT p(e|h) from o
+emit = {h: row_norm_row([o(1,h), o(1,h), o(1,h)]) for h in dom}  # same shape for each i; we will index by obs
+
+def forward_backward(evidence):
+    # evidence: dict {i: observed value at Ei} for i=1..3
+    # prior over H1: uniform
+    prior = [1/3]*3
+    # forward
+    alpha = [{} for _ in range(4)]  # 1..3
+    alpha[1] = {h: prior[h]*emit[h][evidence[1]] for h in dom}
+    def norm(d):
+        s = sum(d.values()); 
+        return {k: v/s for k,v in d.items()}
+    alpha[1] = norm(alpha[1])
+    alpha[2] = {h2: emit[h2][evidence[2]] * sum(alpha[1][h1]*trans[h1][h2] for h1 in dom) for h2 in dom}
+    alpha[2] = norm(alpha[2])
+    alpha[3] = {h3: emit[h3][evidence[3]] * sum(alpha[2][h2]*trans[h2][h3] for h2 in dom) for h3 in dom}
+    alpha[3] = norm(alpha[3])
+    # posterior of H2 via one-step smoothing: proportional to alpha2 * backward2
+    # backward from the end:
+    beta3 = {h:1.0 for h in dom}
+    beta2 = {h2: sum(trans[h2][h3]*emit[h3][evidence[3]]*beta3[h3] for h3 in dom) for h2 in dom}
+    # combine:
+    post2 = {h: alpha[2][h]*beta2[h] for h in dom}
+    s = sum(post2.values()); post2 = {k:v/s for k,v in post2.items()}
+    return post2
+
+# ----- Alarm BN illustrating explaining away -----
+def alarm_probs(eps=0.05):
+    # P(B=1|A=1) and P(B=1|A=1,E=1)
+    # Using formulas from lecture
+    p1 = 1.0/(2.0 - eps)
+    p2 = eps
+    return p1, p2
+
+if __name__ == "__main__":
+    Z, p2, argmax, w = enumerate_exact()
+    print("Exact Z:", Z, "P(X2):", p2, "argmax:", argmax, "w:", w)
+    print("Gibbs P(X2) ~", gibbs())
+    print("BN posterior H2 | E=(0,2,2):", forward_backward({1:0,2:2,3:2}))
+    print("Alarm explaining-away:", alarm_probs())
+```
+
+## **Week 7-2：7-2bayesnets2-w7-2**
+
+# 课堂练习 — 同题：三步 HMM + 概率程序 + BN→MRF
+状态域 $\{0,1,2\}$。先验 $p(H_1)=$ 均匀。转移 $p(h_i\mid h_{i-1})=\frac12[\!h_i{=}h_{i-1}\!]+\frac14[\!|h_i-h_{i-1}|=1\!]$。  
+发射 $p(e_i\mid h_i)=\frac12[\!e_i{=}h_i\!]+\frac14[\!|e_i-h_i|=1\!]$。观测 $(e_1,e_2,e_3)=(0,2,2)$。
+
+**任务**
+1) **概率程序**：写出抽样 $H_{1:3},E_{1:3}$ 的伪代码；以及**告警**程序 $B,E\sim\mathrm{Bern}(\varepsilon), A=B\lor E$。  
+2) **BN→MRF**（含证据）：把 $E$ 代入后，对查询 $P(H_2\mid E)$**去叶**、**断连**。  
+3) **前向–后向**：计算 $F_1,F_2,F_3$ 与 $B_3,B_2,B_1$，给出 $P(H_2\mid E)$；展示计算过程（分数可）。  
+4) **一次 Gibbs**：在化简后的 MRF 上对 $H_2$ 做一次条件采样。  
+5) **粒子滤波（K=4）**：在 $i=3$ 做一轮“提议→加权→重采样”，给出粒子计数。
+
+# 课后作业 — 同题程序实现：BN II（Gibbs · 前向–后向 · 粒子滤波）
+
+**A 部分 — 概率程序**
+- 实现 `sample_alarm(eps)` 与 HMM 采样器 `sample_hmm(T)`。
+
+**B 部分 — BN→MRF + Gibbs**
+- 在玩具医疗 BN（C,A,H,I）上结合证据 $H{=}1,I{=}1$ 构建 MRF，写 Gibbs 估计 $P(C{=}1\mid H{=}1,I{=}1)$。
+
+**C 部分 — HMM**
+- 实现 **forward_backward(evidence)**（返回各时刻 $H_i$ 的边缘）；  
+- 实现 **particle_filter(evidence,K)**（提议–加权–重采样），仅保存最后 $H_i$ 的计数；  
+- 在 $i=3$ 将过滤后验与精确平滑 $P(H_3\mid E)$ 对比，测试 $K\in\{50,200,1000\}$，报告 $\ell_1$ 误差与时间；  
+- （选做）加入 **束搜索** 基线（K 同粒子），讨论多样性与精度。
+
+**提交**：代码 + ≤2 页说明（后验/误差表与简评）。
+
+## 参考代码— 同题的程序实现
+ref_bayesnets2.py
+···python
+from typing import Dict, List, Tuple
+import random, math
+random.seed(0)
+
+# ----- Probabilistic programs -----
+def bernoulli(eps: float) -> int:
+    return 1 if random.random() < eps else 0
+
+def sample_alarm(eps=0.05):
+    B = bernoulli(eps)
+    E = bernoulli(eps)
+    A = 1 if (B or E) else 0
+    return {"B":B,"E":E,"A":A}
+
+def sample_hmm(T=3, domain=(0,1,2)):
+    def trans(h_prev, h):
+        if h==h_prev: return 0.5
+        if abs(h-h_prev)==1: return 0.25
+        return 0.0
+    def emit(h, e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    H = [random.choice(domain)]
+    E = [random.choice(domain)]
+    # redraw E[0] conditioned on H[0]
+    E[0] = random.choices(domain, [emit(H[0],e) for e in domain])[0]
+    for i in range(1,T):
+        H.append(random.choices(domain, [trans(H[i-1],h) for h in domain])[0])
+        E.append(random.choices(domain, [emit(H[i],e) for e in domain])[0])
+    return H, E
+
+# ----- HMM Forward–Backward -----
+def forward_backward(evidence: List[int], domain=(0,1,2)):
+    n = len(evidence)
+    def trans(hp, h):
+        if h==hp: return 0.5
+        if abs(h-hp)==1: return 0.25
+        return 0.0
+    def emit(h, e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    # prior uniform
+    prior = {h:1/len(domain) for h in domain}
+    F = [ {h:0.0 for h in domain} for _ in range(n) ]
+    B = [ {h:1.0 for h in domain} for _ in range(n) ]
+    # forward
+    for h in domain:
+        F[0][h] = prior[h] * emit(h, evidence[0])
+    # normalize
+    s = sum(F[0].values());  F[0] = {h: F[0][h]/s for h in domain}
+    for i in range(1,n):
+        for h in domain:
+            F[i][h] = emit(h, evidence[i]) * sum(F[i-1][hp]*trans(hp,h) for hp in domain)
+        s = sum(F[i].values());  F[i] = {h: F[i][h]/s for h in domain}
+    # backward
+    for i in reversed(range(n-1)):
+        for h in domain:
+            B[i][h] = sum(B[i+1][hn]*trans(h,hn)*emit(hn, evidence[i+1]) for hn in domain)
+        s = sum(B[i].values());  B[i] = {h: B[i][h]/s for h in domain}
+    # smoothing
+    post = []
+    for i in range(n):
+        S = {h: F[i][h]*B[i][h] for h in domain}
+        s = sum(S.values()); S = {h: S[h]/s for h in domain}
+        post.append(S)
+    return F, B, post
+
+# ----- Particle Filter (filtering) -----
+def particle_filter(evidence: List[int], K=200, domain=(0,1,2), seed=0):
+    random.seed(seed)
+    def trans(hp, h):
+        if h==hp: return 0.5
+        if abs(h-hp)==1: return 0.25
+        return 0.0
+    def emit(h, e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    # initialize H1 ~ prior uniform but weight by emission
+    particles = random.choices(domain, k=K)
+    weights = [emit(h, evidence[0]) for h in particles]
+    # resample
+    def resample(parts, ws):
+        s = sum(ws)
+        if s==0: ws = [1.0/len(ws)]*len(ws)
+        else: ws = [w/s for w in ws]
+        # multinomial resampling
+        cs = []
+        c=0.0
+        for w in ws:
+            c+=w; cs.append(c)
+        new = []
+        for _ in parts:
+            r = random.random()
+            j=0
+            while r>cs[j]: j+=1
+            new.append(parts[j])
+        return new
+    particles = resample(particles, weights)
+    # iterate
+    for i in range(1, len(evidence)):
+        # propose
+        proposed = []
+        for hprev in particles:
+            proposed.append(random.choices(domain, [trans(hprev,h) for h in domain])[0])
+        # weight by emission
+        weights = [emit(h, evidence[i]) for h in proposed]
+        particles = resample(proposed, weights)
+    # counts for last Hi
+    counts = {h:0 for h in domain}
+    for h in particles: counts[h]+=1
+    total = sum(counts.values())
+    approx = {h: counts[h]/total for h in domain}
+    return approx, counts
+
+# ----- Gibbs on tiny medical BN: C,A cause H,I; evidence H=1,I=1 -----
+def gibbs_CA(num_iters=5000, burn=500, seed=0):
+    random.seed(seed)
+    # priors p(C=1)=0.1, p(A=1)=0.3; conditionals:
+    pC = 0.1; pA=0.3
+    # p(H=1|C,A): OR-like
+    def pH(c,a): return 0.9 if (c or a) else 0.1
+    # p(I=1|A): itchy if allergies
+    def pI(a): return 0.8 if a==1 else 0.2
+    # evidence H=1, I=1
+    c,a = 0,1
+    cntC1=0
+    for it in range(num_iters):
+        # sample C | A,H=1,I=1 ∝ p(C)p(H=1|C,A)
+        w0 = (1-pC)*pH(0,a)
+        w1 = pC*pH(1,a)
+        s = w0+w1
+        c = 1 if random.random() < (w1/s) else 0
+        # sample A | C,H=1,I=1 ∝ p(A)p(H=1|C,A)p(I=1|A)
+        w0 = (1-pA)*pH(c,0)*pI(0)
+        w1 = pA*pH(c,1)*pI(1)
+        s = w0+w1
+        a = 1 if random.random() < (w1/s) else 0
+        if it>=burn:
+            cntC1 += c
+    return cntC1/(num_iters-burn)
+```
+## **Week 7-3：7-3bayesnets3-w7-2**
+
+# 课堂练习 — 同题：电影评分 BN（G → R1,R2），G 缺失
+
+**变量与取值**
+- 体裁 $G\in\{\mathrm{c},\mathrm{d}\}$（喜剧/剧情）
+- 评分 $R_1,R_2\in\{1,2,3,4,5\}$
+
+**数据**
+- **监督集**（全观测）：$(G,R_1,R_2)\in\{(d,4,5),(d,4,4),(d,5,3),(c,1,2),(c,5,4)\}$；
+- **非监督集**（$G$ 缺失）：$(?,2,2),(?,1,2)$。
+
+**任务**
+1) **MLE（计数+归一化）**，并启用**参数共享** $p_R(\cdot\mid g)$（同时驱动 $R_1,R_2$）。由监督集求 $p_G(g)$、$p_R(r\mid g)$。  
+2) **拉普拉斯平滑** $\lambda=1$：重算 $p_R(r\mid g)$。哪些 0 变为 $>0$？  
+3) **EM 一步**，用两条缺失 $G$ 的样本：  
+   - **E 步**：对每个 $(r_1,r_2)$ 计算 $q_g \propto p_G(g)\,p_R(r_1\mid g)\,p_R(r_2\mid g)$ 并归一化；  
+   - **M 步**：把分数计数加到 $p_G, p_R$（可选带 $\lambda$），报告更新后的表。  
+4)（**选做**）讨论增大 $\lambda$ 的影响。
+
+**提交**：步骤 1–3 的表格与计算过程。
+
+# 课后作业 — 同题程序实现：电影评分 BN 的学习
+
+实现一个**参数共享**版学习器 $p_R(\cdot\mid g)$。
+
+1) **MLE**：`fit_mle(supervised_data, share_R=True)` 得到 `pG`, `pR`。  
+2) **拉普拉斯平滑**：`fit_mle(..., lambda_=1.0)`；做 $\lambda\in\{0,0.5,1,2\}$ 扫描，报告 0→正数 的条目变化。  
+3) **EM**：`fit_em(mixed_data, init, lambda_=1.0, iters=1..10)`（混合 监督+非监督）；绘制对数似然随迭代变化曲线。  
+4) **后验检查**：EM 后对未标注对儿 $(r_1,r_2)$ 计算 $P(G\mid r_1,r_2)$。  
+5) **（选做）** 朴素贝叶斯扩展：单词分类，`p_word(·|y)` 的参数共享 + 拉普拉斯平滑。
+
+提交：代码 + ≤2 页说明（CPT 表、λ 扫描摘要、似然曲线）。
+
+## 参考代码— 同题的程序实现
+ref_bn_learning.py
+···python
+from typing import List, Dict, Optional, Tuple
+from collections import defaultdict
+import math, random
+
+# Domains
+G_vals = ["c","d"]
+R_vals = [1,2,3,4,5]
+
+Example = Tuple[Optional[str], int, int]  # (G or None, R1, R2)
+
+def normalize(d: Dict):
+    s = sum(d.values())
+    if s == 0:
+        # uniform fallback
+        n = len(d)
+        for k in d:
+            d[k] = 1.0/n
+    else:
+        for k in d:
+            d[k] /= s
+    return d
+
+def fit_mle(supervised: List[Example], lambda_: float=0.0, share_R: bool=True):
+    """
+    Fully observed MLE with optional Laplace smoothing and parameter sharing for p_R.
+    Returns: pG (dict), pR (dict g-> {r: prob})
+    """
+    # Counts
+    countG = defaultdict(float, {g: 0.0 for g in G_vals})
+    if share_R:
+        countR = {g: defaultdict(float, {r: 0.0 for r in R_vals}) for g in G_vals}
+    else:
+        countR1 = {g: defaultdict(float, {r: 0.0 for r in R_vals}) for g in G_vals}
+        countR2 = {g: defaultdict(float, {r: 0.0 for r in R_vals}) for g in G_vals}
+    # Laplace preload
+    for g in G_vals:
+        countG[g] += lambda_
+        if share_R:
+            for r in R_vals:
+                countR[g][r] += lambda_
+        else:
+            for r in R_vals:
+                countR1[g][r] += lambda_
+                countR2[g][r] += lambda_
+    # Tally data
+    for g, r1, r2 in supervised:
+        assert g is not None, "fit_mle expects fully observed data"
+        countG[g] += 1
+        if share_R:
+            countR[g][r1] += 1
+            countR[g][r2] += 1
+        else:
+            countR1[g][r1] += 1
+            countR2[g][r2] += 1
+    # Normalize
+    pG = normalize(dict(countG))
+    if share_R:
+        pR = {g: normalize(dict(countR[g])) for g in G_vals}
+    else:
+        pR = {"R1": {g: normalize(dict(countR1[g])) for g in G_vals},
+              "R2": {g: normalize(dict(countR2[g])) for g in G_vals}}
+    return pG, pR
+
+def log_likelihood(mixed: List[Example], pG, pR, share_R: bool=True):
+    ll = 0.0
+    for g_obs, r1, r2 in mixed:
+        if g_obs is None:
+            # sum over g
+            s = 0.0
+            for g in G_vals:
+                if share_R:
+                    s += pG[g]*pR[g][r1]*pR[g][r2]
+                else:
+                    s += pG[g]*pR["R1"][g][r1]*pR["R2"][g][r2]
+            ll += math.log(max(s, 1e-12))
+        else:
+            g = g_obs
+            if share_R:
+                prob = pG[g]*pR[g][r1]*pR[g][r2]
+            else:
+                prob = pG[g]*pR["R1"][g][r1]*pR["R2"][g][r2]
+            ll += math.log(max(prob, 1e-12))
+    return ll
+
+def e_step_posteriors(mixed: List[Example], pG, pR, share_R=True):
+    """Return list of posteriors q for each example (dict over g), using current params."""
+    qs = []
+    for g_obs, r1, r2 in mixed:
+        if g_obs is not None:
+            q = {g: 1.0 if g==g_obs else 0.0 for g in G_vals}
+        else:
+            un = {}
+            for g in G_vals:
+                if share_R:
+                    un[g] = pG[g]*pR[g][r1]*pR[g][r2]
+                else:
+                    un[g] = pG[g]*pR["R1"][g][r1]*pR["R2"][g][r2]
+            s = sum(un.values())
+            q = {g: (un[g]/s if s>0 else 1.0/len(G_vals)) for g in G_vals}
+        qs.append(q)
+    return qs
+
+def m_step(mixed: List[Example], qs, lambda_: float=0.0, share_R: bool=True):
+    # fractional counts with Laplace preload
+    countG = defaultdict(float, {g: lambda_ for g in G_vals})
+    if share_R:
+        countR = {g: defaultdict(float, {r: lambda_ for r in R_vals}) for g in G_vals}
+    else:
+        countR1 = {g: defaultdict(float, {r: lambda_ for r in R_vals}) for g in G_vals}
+        countR2 = {g: defaultdict(float, {r: lambda_ for r in R_vals}) for g in G_vals}
+    for (g_obs, r1, r2), q in zip(mixed, qs):
+        for g in G_vals:
+            w = q[g]
+            countG[g] += w
+            if share_R:
+                countR[g][r1] += w
+                countR[g][r2] += w
+            else:
+                countR1[g][r1] += w
+                countR2[g][r2] += w
+    pG = normalize(dict(countG))
+    if share_R:
+        pR = {g: normalize(dict(countR[g])) for g in G_vals}
+    else:
+        pR = {"R1": {g: normalize(dict(countR1[g])) for g in G_vals},
+              "R2": {g: normalize(dict(countR2[g])) for g in G_vals}}
+    return pG, pR
+
+def fit_em(mixed: List[Example], init=None, lambda_: float=0.0, iters: int=5, share_R=True):
+    if init is None:
+        # uniform init
+        if share_R:
+            pR = {g: {r: 1.0/len(R_vals) for r in R_vals} for g in G_vals}
+        else:
+            pR = {"R1": {g: {r: 1.0/len(R_vals) for r in R_vals} for g in G_vals},
+                  "R2": {g: {r: 1.0/len(R_vals) for r in R_vals} for g in G_vals}}
+        pG = {g: 1.0/len(G_vals) for g in G_vals}
+    else:
+        pG, pR = init
+    history = [log_likelihood(mixed, pG, pR, share_R=share_R)]
+    for _ in range(iters):
+        qs = e_step_posteriors(mixed, pG, pR, share_R=share_R)
+        pG, pR = m_step(mixed, qs, lambda_=lambda_, share_R=share_R)
+        history.append(log_likelihood(mixed, pG, pR, share_R=share_R))
+    return (pG, pR), history
+
+if __name__ == "__main__":
+    supervised = [("d",4,5),("d",4,4),("d",5,3),("c",1,2),("c",5,4)]
+    pG, pR = fit_mle(supervised, lambda_=0.0, share_R=True)
+    print("MLE pG:", pG); print("MLE pR:", pR)
+    pG1, pR1 = fit_mle(supervised, lambda_=1.0, share_R=True)
+    print("Laplace(1) pR for d:", pR1["d"])
+    mixed = supervised + [(None,2,2),(None,1,2)]
+    (pG_em, pR_em), hist = fit_em(mixed, init=(pG1,pR1), lambda_=1.0, iters=3, share_R=True)
+    print("EM pG:", pG_em); print("LL hist:", hist)
+```
+## **Week 8-1：8-1logic1-w8-1**
+
+# 课堂练习 — 同题：Rain–Wet–Slippery 知识库
+
+**KB** = { Rain, Rain → Wet, Wet → Slippery }，原子 {Rain, Wet, Slippery}。
+
+任务
+1) **推导（仅用肯定前件）**：尽可能推导新公式。出现了哪些？
+2) **用 SAT 思考做 Ask/Tell**（手算逻辑，不用代码）：
+   a) **Wet** 是否被蕴含？检查 KB ∪ {¬Wet} 是否可满足？
+   b) **Rain → Slippery** 是否被蕴含？
+   c) **¬Rain** 是否与 KB 矛盾？
+3) **或然**：**Snow** 对 KB 是否或然？用“模型集”直觉解释。
+4) **M(KB) 收缩**：若 Tell[¬Wet]，系统应给出何种响应（已知/拒绝/学习到新信息）？
+提交：一页，含 (i) 推导结果，(ii) 蕴含/矛盾/或然判断与 1–2 行理由。
+
+# 课后作业 — 同题程序实现：极简命题逻辑引擎
+
+实现 **Ask/Tell = SAT** 与 **前向推理（仅肯定前件）**。
+
+1) **AST 与求值器**：原子、Not/And/Or/Imp/Iff；`eval(formula, model)`（model 为字典）。
+2) **真值表 SAT 与蕴含**：
+   - `satisfiable(KB)`，`entails(KB, f)`：用 `KB ⊨ f ⇔ KB ∪ {¬f}` 不可满足。
+   - 若可满足，返回一个反例模型（说明“未被蕴含/未矛盾”）。
+3) **前向推理**：仅**肯定前件**，返回所有可推导公式；展示正确性（推导 ⊆ 蕴含），并用反例说明不完备（如 KB={Rain, Rain∨Snow → Wet} 推不出 Wet）。
+4) **在课堂 KB 上实验**：验证 2a–2c；给出见证或然的模型。
+5) **（选做）** 实现 DPLL / WalkSAT；对比与真值表的节点数（或时间）。
+
+提交：代码 + ≤2 页（答案与对正确/完备的简短讨论）。
+
+## 参考代码— 同题的程序实现
+ref_logic1.py
+···python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Dict, Set, Iterable, Tuple, List, Optional
+import itertools
+
+# ---- AST ----
+@dataclass(frozen=True)
+class Var:
+    name: str
+
+@dataclass(frozen=True)
+class Not:
+    f: object
+
+@dataclass(frozen=True)
+class And:
+    a: object; b: object
+
+@dataclass(frozen=True)
+class Or:
+    a: object; b: object
+
+@dataclass(frozen=True)
+class Imp:
+    a: object; b: object  # a -> b
+
+@dataclass(frozen=True)
+class Iff:
+    a: object; b: object  # a <-> b
+
+def atoms_in(f) -> Set[str]:
+    if isinstance(f, Var): return {f.name}
+    if isinstance(f, Not): return atoms_in(f.f)
+    if isinstance(f, (And, Or, Imp, Iff)): return atoms_in(f.a) | atoms_in(f.b)
+    raise TypeError(f"Unknown node: {f}")
+
+def eval_formula(f, w: Dict[str, int]) -> int:
+    if isinstance(f, Var): return 1 if w.get(f.name, 0) else 0
+    if isinstance(f, Not): return 1 - eval_formula(f.f, w)
+    if isinstance(f, And): return eval_formula(f.a, w) & eval_formula(f.b, w)
+    if isinstance(f, Or):  return max(eval_formula(f.a, w), eval_formula(f.b, w))
+    if isinstance(f, Imp): return 1 if (eval_formula(f.a, w)==0 or eval_formula(f.b, w)==1) else 0
+    if isinstance(f, Iff): 
+        ea, eb = eval_formula(f.a, w), eval_formula(f.b, w)
+        return 1 if ea==eb else 0
+    raise TypeError(f"Unknown node: {f}")
+
+def models_of_KB(KB: Iterable[object]) -> List[Dict[str,int]]:
+    atoms = sorted(set().union(*[atoms_in(f) for f in KB])) if KB else []
+    sols = []
+    for vals in itertools.product([0,1], repeat=len(atoms)):
+        w = dict(zip(atoms, vals))
+        if all(eval_formula(f, w)==1 for f in KB):
+            sols.append(w)
+    return sols
+
+def satisfiable(KB: Iterable[object]) -> Tuple[bool, Optional[Dict[str,int]]]:
+    sols = models_of_KB(KB)
+    if sols: return True, sols[0]
+    return False, None
+
+def entails(KB: Iterable[object], f) -> bool:
+    # KB |= f  iff  KB ∪ {¬f} is UNSAT
+    sat, _ = satisfiable(list(KB) + [Not(f)])
+    return not sat
+
+# ---- Forward chaining with Modus Ponens only ----
+def forward_chain_modus_ponens(KB: Iterable[object]) -> Set[object]:
+    KB = set(KB)
+    changed = True
+    while changed:
+        changed = False
+        # collect (p, (p->q)) pairs
+        facts = {f for f in KB if isinstance(f, Var) or (isinstance(f, Not) and isinstance(f.f, Var))}
+        imps  = {f for f in KB if isinstance(f, Imp)}
+        for imp in list(imps):
+            p, q = imp.a, imp.b
+            if p in KB and q not in KB:
+                KB.add(q); changed = True
+    return KB
+
+# ---- Examples used in class ----
+Rain, Wet, Slippery, Snow = map(Var, ["Rain","Wet","Slippery","Snow"])
+
+if __name__ == "__main__":
+    KB = {Rain, Imp(Rain,Wet), Imp(Wet,Slippery)}
+    # Entailment checks
+    print("KB entails Wet?", entails(KB, Wet))
+    print("KB entails Rain->Slippery?", entails(KB, Imp(Rain,Slippery)))
+    print("KB entails not Rain?", entails(KB, Not(Rain)))
+    # Forward chaining (MP)
+    FC = forward_chain_modus_ponens(KB)
+    print("Forward-derived:", FC)
+    # Contingency witness for Snow
+    print("KB ∪ {Snow} satisfiable?", satisfiable(KB | {Snow}))
+    print("KB ∪ {¬Snow} satisfiable?", satisfiable(KB | {Not(Snow)}))
+···
+
+## **Week 8-2：8-2logic2-w8-2**
+# 课堂练习 — 同题：学生–课程–掌握
+
+**域**  
+常量：`alice, bob, cs221, mdp`；谓词：`Takes(x,y)`, `Course(y)`, `Covers(y,z)`, `Knows(x,z)`。
+
+**知识库（Horn）**  
+1) ∀x∀y∀z  (Takes(x,y) ∧ Covers(y,z)) → Knows(x,z)  
+2) Takes(alice, cs221)  
+3) Covers(cs221, mdp)  
+4) Course(cs221)
+
+### 任务
+A) **命题化（Horn）+ MP 完备性**  
+- 将变量替换为常量，得到命题原子，如 `Takes_alice_cs221`；  
+- 用**前向链（仅 MP）**推导 `Knows_alice_mdp`，画出小型推导 DAG。
+
+B) **CNF 转换（演练）**  
+把 $(A∧B)→(C∨D)$ 转为合取范式；并展示 Horn 规则对应的一条子句。
+
+C) **命题归结（非 Horn 附加）**  
+在 KB 中加入 `¬Knows(alice, mdp)`，转成 CNF，用归结推出**空子句** $\Box$。
+
+D) **一阶 MP + 合一**  
+不做命题化，给出前提 `{Takes(alice,cs221), Covers(cs221,mdp)}` 与规则 (1) 的**合一** θ，并推 `Knows(alice,mdp)`。
+
+E)（**选做：一阶归结**）  
+由子句 `[¬Takes(x,y) ∨ ¬Covers(y,z) ∨ Knows(x,z)]` 与 `[Takes(alice,cs221)]`、`[Covers(cs221,mdp)]` 做一次**归结**得到实例化结论。
+
+# 课后作业 — 同题程序实现：逻辑 II 工具包
+
+实现轻量工具包：
+
+1) **命题 CNF + 归结**
+   - AST → CNF（去 ↔/→、推 ¬、分配）；  
+   - 归结反证 `entails_via_resolution(KB, f)`：返回推导轨迹（父子句→结论），若失败则返回反例描述。
+
+2) **Horn 前向链**
+   - 规则 `(premises -> head)` 与事实；导出所有可推原子及其**证明 DAG**。
+
+3) **一阶合一 + 一阶 MP**
+   - `Const/Var/Fun` 与 `Pred(name,args)`；  
+   - `unify(a,b)`（含基本 occurs-check）、`subst(theta,obj)`；  
+   - `fo_modus_ponens(facts, rule)`：用最普遍合一推新事实。
+
+4) **在课堂 KB 上验证**
+   - 证明：(i) FC 推得 `Knows(alice,mdp)`；(ii) CNF+归结在 KB∪{¬Knows(alice,mdp)} 上导出空子句；(iii) 一阶 MP 在不命题化的前提下推出结论。
+
+（**选做**）实现 FO-CNF（Skolem 化）与一次一阶归结。
+
+**提交**：代码 + ≤2 页（CNF 步骤、归结轨迹、FC 图、FO-MP 合一）。
+
+## 参考代码— 同题的程序实现
+ref_logic2.py
+···python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import List, Set, Tuple, Dict, Optional, Iterable, Union
+import itertools
+
+# ===== Propositional AST =====
+@dataclass(frozen=True)  # atoms
+class PVar: name: str
+@dataclass(frozen=True)  # unary
+class PNot: f: object
+@dataclass(frozen=True)  # binary
+class PAnd: a: object; b: object
+@dataclass(frozen=True)
+class POr: a: object; b: object
+@dataclass(frozen=True)
+class PImp: a: object; b: object
+@dataclass(frozen=True)
+class PIff: a: object; b: object
+
+def eliminate_iff_imp(f):
+    if isinstance(f, PIff):
+        # (a<->b) == (a->b)&&(b->a)
+        return PAnd(eliminate_iff_imp(PImp(f.a,f.b)), eliminate_iff_imp(PImp(f.b,f.a)))
+    if isinstance(f, PImp):
+        # (a->b) == (!a || b)
+        return POr(PNot(eliminate_iff_imp(f.a)), eliminate_iff_imp(f.b))
+    if isinstance(f, PNot): return PNot(eliminate_iff_imp(f.f))
+    if isinstance(f, PAnd): return PAnd(eliminate_iff_imp(f.a), eliminate_iff_imp(f.b))
+    if isinstance(f, POr):  return POr(eliminate_iff_imp(f.a), eliminate_iff_imp(f.b))
+    return f
+
+def push_not(f):
+    if isinstance(f, PNot):
+        g = f.f
+        if isinstance(g, PNot): return push_not(g.f)
+        if isinstance(g, PAnd): return POr(push_not(PNot(g.a)), push_not(PNot(g.b)))
+        if isinstance(g, POr):  return PAnd(push_not(PNot(g.a)), push_not(PNot(g.b)))
+        return f
+    if isinstance(f, PAnd): return PAnd(push_not(f.a), push_not(f.b))
+    if isinstance(f, POr):  return POr(push_not(f.a), push_not(f.b))
+    return f
+
+def distribute_or_over_and(f):
+    if isinstance(f, POr):
+        A, B = distribute_or_over_and(f.a), distribute_or_over_and(f.b)
+        if isinstance(A, PAnd):
+            return PAnd(distribute_or_over_and(POr(A.a, B)), distribute_or_over_and(POr(A.b, B)))
+        if isinstance(B, PAnd):
+            return PAnd(distribute_or_over_and(POr(A, B.a)), distribute_or_over_and(POr(A, B.b)))
+        return POr(A,B)
+    if isinstance(f, PAnd): return PAnd(distribute_or_over_and(f.a), distribute_or_over_and(f.b))
+    return f
+
+def to_cnf(f):
+    f1 = eliminate_iff_imp(f)
+    f2 = push_not(f1)
+    f3 = distribute_or_over_and(f2)
+    # extract clauses as sets of literals (name, sign)
+    clauses = []
+    def gather(g):
+        if isinstance(g, PAnd):
+            gather(g.a); gather(g.b)
+        else:
+            # a clause
+            lits = set()
+            def collect(h):
+                if isinstance(h, POr):
+                    collect(h.a); collect(h.b)
+                elif isinstance(h, PNot) and isinstance(h.f, PVar):
+                    lits.add((h.f.name, False))
+                elif isinstance(h, PVar):
+                    lits.add((h.name, True))
+                else:
+                    # wrap non-literal as a fresh symbol (rare in our use)
+                    lits.add((str(h), True))
+            collect(g)
+            clauses.append(frozenset(lits))
+    gather(f3)
+    return set(clauses)
+
+def resolution_entails(kb_clauses: Set[frozenset], query_clauses: Set[frozenset]):
+    # Refutation: add negation of query as CNF (here query_clauses already CNF)
+    clauses = set(kb_clauses) | set(query_clauses)
+    new = set()
+    parents = {}  # child -> (c1,c2)
+    def resolvents(c1, c2):
+        res = set()
+        for (p, s1) in c1:
+            key = (p, not s1)
+            if key in c2:
+                # resolvent = (c1\{p^s1}) ∪ (c2\{p^¬s1})
+                r = (c1 - {(p,s1)}) | (c2 - {key})
+                res.add(frozenset(r))
+        return res
+    while True:
+        pairs = [(c1,c2) for i,c1 in enumerate(clauses) for j,c2 in enumerate(clauses) if i<j]
+        for (c1,c2) in pairs:
+            for r in resolvents(c1,c2):
+                if not r:  # empty clause
+                    parents[r] = (c1,c2)
+                    return True, parents
+                if r not in clauses:
+                    new.add(r)
+                    parents[r] = (c1,c2)
+        if new.issubset(clauses):  # no progress
+            return False, parents
+        clauses |= new
+        new.clear()
+
+# ===== Horn Forward Chaining =====
+def forward_chain(facts: Set[str], rules: List[Tuple[Set[str], str]]):
+    derived = set(facts)
+    just = {}  # head -> premises
+    changed = True
+    while changed:
+        changed = False
+        for premises, head in rules:
+            if premises.issubset(derived) and head not in derived:
+                derived.add(head); just[head] = set(premises); changed=True
+    return derived, just
+
+# ===== First-Order: terms, atoms, substitution, unification, FO-MP =====
+@dataclass(frozen=True)
+class Const: name: str
+@dataclass(frozen=True)
+class Var: name: str
+@dataclass(frozen=True)
+class Fun:
+    name: str
+    args: Tuple[object, ...]
+@dataclass(frozen=True)
+class Pred:
+    name: str
+    args: Tuple[object, ...]
+
+Term = Union[Const, Var, Fun]
+
+def occurs(v: Var, t: Term) -> bool:
+    if isinstance(t, Var): return t==v
+    if isinstance(t, Fun): return any(occurs(v,a) for a in t.args)
+    return False
+
+def subst(theta: Dict[Var, Term], obj):
+    if isinstance(obj, Var): return theta.get(obj, obj)
+    if isinstance(obj, Const): return obj
+    if isinstance(obj, Fun):  return Fun(obj.name, tuple(subst(theta,a) for a in obj.args))
+    if isinstance(obj, Pred): return Pred(obj.name, tuple(subst(theta,a) for a in obj.args))
+    if isinstance(obj, (list,tuple)): return type(obj)(subst(theta,x) for x in obj)
+    return obj
+
+def unify(a, b, theta=None):
+    if theta is None: theta = {}
+    a = subst(theta, a); b = subst(theta, b)
+    if a==b: return theta
+    if isinstance(a, Var):
+        if occurs(a,b): raise ValueError("occurs check fails")
+        theta = dict(theta); theta[a]=b; return theta
+    if isinstance(b, Var):
+        if occurs(b,a): raise ValueError("occurs check fails")
+        theta = dict(theta); theta[b]=a; return theta
+    if isinstance(a, Fun) and isinstance(b, Fun) and a.name==b.name and len(a.args)==len(b.args):
+        for x,y in zip(a.args, b.args):
+            theta = unify(x,y,theta)
+        return theta
+    if isinstance(a, Pred) and isinstance(b, Pred) and a.name==b.name and len(a.args)==len(b.args):
+        for x,y in zip(a.args, b.args):
+            theta = unify(x,y,theta)
+        return theta
+    raise ValueError("cannot unify")
+
+def fo_modus_ponens(facts: List[Pred], rule_premises: List[Pred], rule_head: Pred):
+    # try to unify conjunction of rule_premises with some subset of facts
+    # naive: try all matchings of rule premises to facts
+    results = []
+    for combo in itertools.permutations(facts, r=len(rule_premises)):
+        try:
+            theta = {}
+            ok=True
+            for a,b in zip(combo, rule_premises):
+                theta = unify(a, b, theta)
+            head_inst = subst(theta, rule_head)
+            results.append(head_inst)
+        except Exception:
+            ok=False
+        if ok: break
+    return results
+
+# ===== Example wiring for class KB =====
+def class_kb_demo():
+    # Propositional Horn version
+    facts = {"Takes_alice_cs221", "Covers_cs221_mdp"}
+    rules = [
+        ({"Takes_alice_cs221", "Covers_cs221_mdp"}, "Knows_alice_mdp")
+    ]
+    derived, just = forward_chain(facts, rules)
+
+    # Propositional resolution refutation for KB ∧ ¬Knows
+    A = PVar("Takes_alice_cs221"); B = PVar("Covers_cs221_mdp"); C = PVar("Knows_alice_mdp")
+    rule = PImp(PAnd(A,B), C)
+    kb_cnf = to_cnf(rule) | to_cnf(A) | to_cnf(B)
+    neg_query = to_cnf(PNot(C))
+    entails, proof = resolution_entails(kb_cnf, neg_query)
+
+    # FO-MP
+    alice, cs221, mdp = Const("alice"), Const("cs221"), Const("mdp")
+    x,y,z = Var("x"), Var("y"), Var("z")
+    facts_fo = [Pred("Takes",(alice,cs221)), Pred("Covers",(cs221,mdp))]
+    rule_prems = [Pred("Takes",(x,y)), Pred("Covers",(y,z))]
+    rule_head = Pred("Knows",(x,z))
+    fo_results = fo_modus_ponens(facts_fo, rule_prems, rule_head)
+    return derived, just, entails, fo_results
+
+if __name__ == "__main__":
+    print(class_kb_demo())
+···
+
+## **Week 8-2：9-conclusion-w8-2**
+
+# 课堂练习 — 同题：校园配送机器人（一个场景，多种工具）
+
+**情境**：设计校园配送机器人 *CampusBot*，需完成：(i) 斑马线检测，(ii) 路径规划，(iii) 行人跟踪，
+(iv) 遵守校规（禁行区/时间窗），(v) 满足伦理合规。
+
+任务
+1) **为每个子任务选工具（简要理由）**  
+   - 斑马线检测 →（反射式：模型+推断+学习）  
+   - 静态地图路径 →（状态式：搜索）  
+   - 随机行程时间 →（状态式：MDP）  
+   - 噪声位置的行人跟踪 →（变量式）  
+   - 禁行/时间窗规则 →（逻辑式）
+2) **落到算法**（各选其一）：{线性/CNN/kNN}、{UCS/A\*}、{价值迭代}、{前向–后向/Gibbs/粒子滤波}、{模型检测/肯定前件/归结}。
+3) **伦理清单**（数据/目标/不平等/潜在危害/IA）：各列 1–2 条风险与缓解。
+4) **课程路线**：为实现 CampusBot 给出“方法–应用–基础”三元组合。
+提交：一页表格：**子任务→范式→算法→理由**（另附伦理与课程路线）。
+
+# 课后作业 — 同题程序实现：轻量工具推荐器 + 小型演示
+
+为 *CampusBot* 实作：
+
+1) **工具推荐**：`recommend_tools(spec)`（由任务特征映射到范式与算法）。  
+2) **网格 A\*** `astar(grid, s, t)`（4 邻接），输出路径长度。  
+3) **HMM 跟踪** `forward_backward(evidence)`（1D 行人位置域 {0,1,2}）。  
+4) **伦理清单评分** `audit(spec)` 标注数据风险、替代目标、不平等、双用途，并给出 IA 化缓解建议。  
+5) **课程三元组** `next_courses(goal)` 返回 **方法–应用–基础** 建议。
+
+提交：代码 + ≤2 页备忘（你的 CampusBot 设定、推荐结果、A\*/HMM 截图、伦理标记、课程组合）。
+
+## 参考代码— 同题的程序实现
+ref_conclusion_tools.py
+···python
+from typing import List, Tuple, Dict, Any
+import math, heapq, random
+
+# ---------- 1) Tool recommender ----------
+def recommend_tools(spec: Dict[str, bool]) -> Dict[str, Any]:
+    """
+    spec flags: perception, path_planning, stochastic, hidden_state, logic_rules
+    """
+    rec = {"paradigms": [], "algorithms": []}
+    if spec.get("perception"):
+        rec["paradigms"].append("reflex")
+        rec["algorithms"].append({"inference":"feedforward", "learning":"SGD", "models":["linear","CNN","kNN"]})
+    if spec.get("path_planning"):
+        rec["paradigms"].append("state")
+        rec["algorithms"].append({"inference":"A* / UCS", "learning":"-", "models":["search"]})
+    if spec.get("stochastic"):
+        rec["paradigms"].append("state")
+        rec["algorithms"].append({"inference":"value iteration", "learning":"TD / Q-learning", "models":["MDP"]})
+    if spec.get("hidden_state"):
+        rec["paradigms"].append("variable")
+        rec["algorithms"].append({"inference":"forward-backward / particle / Gibbs", "learning":"MLE / EM", "models":["HMM/BN/MN"]})
+    if spec.get("logic_rules"):
+        rec["paradigms"].append("logic")
+        rec["algorithms"].append({"inference":"model checking / MP / resolution", "learning":"-", "models":["prop/FOL"]})
+    return rec
+
+# ---------- 2) Grid A* demo ----------
+def astar(grid: List[str], s: Tuple[int,int], t: Tuple[int,int]) -> Tuple[int, List[Tuple[int,int]]]:
+    H, W = len(grid), len(grid[0])
+    def h(p): return abs(p[0]-t[0]) + abs(p[1]-t[1])
+    def nbrs(p):
+        for dx,dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+            x,y = p[0]+dx, p[1]+dy
+            if 0<=x<H and 0<=y<W and grid[x][y] != '#':
+                yield (x,y)
+    g = {s:0}; came = {}; openq = [(h(s), 0, s)]
+    seen=set()
+    while openq:
+        _, gc, u = heapq.heappop(openq)
+        if u in seen: continue
+        seen.add(u)
+        if u==t: break
+        for v in nbrs(u):
+            ng = gc+1
+            if ng < g.get(v, 1e9):
+                g[v]=ng; came[v]=u
+                heapq.heappush(openq, (ng+h(v), ng, v))
+    if t not in came and s!=t: return (math.inf, [])
+    path = [t]
+    while path[-1]!=s:
+        path.append(came[path[-1]])
+    path.reverse()
+    return (len(path)-1, path)
+
+# ---------- 3) HMM forward-backward (domain {0,1,2}) ----------
+def fb_1d(evidence: List[int]) -> List[Dict[int,float]]:
+    dom = [0,1,2]
+    def trans(hp,h): 
+        if h==hp: return 0.5
+        if abs(h-hp)==1: return 0.25
+        return 0.0
+    def emit(h,e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    n=len(evidence)
+    prior = {h:1/3 for h in dom}
+    F=[{h:0.0 for h in dom} for _ in range(n)]
+    B=[{h:1.0 for h in dom} for _ in range(n)]
+    for h in dom: F[0][h]=prior[h]*emit(h,evidence[0])
+    s=sum(F[0].values()); F[0]={h:F[0][h]/s for h in dom}
+    for i in range(1,n):
+        for h in dom:
+            F[i][h]=emit(h,evidence[i])*sum(F[i-1][hp]*trans(hp,h) for hp in dom)
+        s=sum(F[i].values()); F[i]={h:F[i][h]/s for h in dom}
+    for i in reversed(range(n-1)):
+        for h in dom:
+            B[i][h]=sum(B[i+1][hn]*trans(h,hn)*emit(hn,evidence[i+1]) for hn in dom)
+        s=sum(B[i].values()); B[i]={h:B[i][h]/s for h in dom}
+    post=[]
+    for i in range(n):
+        S={h:F[i][h]*B[i][h] for h in dom}; s=sum(S.values()); post.append({h:S[h]/s for h in dom})
+    return post
+
+# ---------- 4) Ethics checklist ----------
+def audit(spec: Dict[str, Any]) -> Dict[str, List[str]]:
+    out = {"data":[], "objective":[], "inequality":[], "harm":[], "ia":[], "actions":[]}
+    ds = spec.get("data_sources","")
+    if "web" in ds.lower():
+        out["data"].append("Web-scraped data can contain offensive content and historical bias; curate & filter.")
+        out["actions"].append("Add data filters; human-in-the-loop review; document datasheets.")
+    if spec.get("objective","").lower() in {"clicks","views"}:
+        out["objective"].append("Surrogate objective may misalign with user welfare.")
+        out["actions"].append("Use multi-objective optimization; long-term user value metrics.")
+    if spec.get("users") and "underrepresented" in spec["users"]:
+        out["inequality"].append("Potential disparity on under-represented groups.")
+        out["actions"].append("Audit by group; collect balanced data; min-max (worst-group) loss.")
+    if spec.get("potential_misuse"):
+        out["harm"].append("Dual-use risks present.")
+        out["actions"].append("Red-team; restrict API; watermarking/traceability.")
+    out["ia"].append("Prefer IA: keep humans-in-the-loop; design interpretable controls.")
+    return out
+
+# ---------- 5) Course triad ----------
+def next_courses(goal: str="robotics") -> Dict[str, List[str]]:
+    M = {
+        "robotics": {
+            "Methods": ["CS229", "CS230", "CS234", "CS238"],
+            "Applications": ["CS237AB", "CS223A"],
+            "Foundations": ["EE364/CS334", "STATS200"]
+        },
+        "nlp": {
+            "Methods": ["CS229", "CS230", "CS228", "CS236"],
+            "Applications": ["CS224N", "CS224U", "CS224V", "CS224C", "CS324"],
+            "Foundations": ["EE364/CS334", "STATS214/CS229M"]
+        },
+        "vision": {
+            "Methods": ["CS229", "CS230", "CS228"],
+            "Applications": ["CS231N", "CS231A", "CS348I"],
+            "Foundations": ["EE364/CS334", "STATS200"]
+        }
+    }
+    return M.get(goal.lower(), M["robotics"])
+···
+
+
+
 # 项目（项目1，2，3，4，7必做，项目5，6可选）
 1. (第二周周四截止）项目1--Pytorch Installation 简述!<br/>
    [提交项目模板](https://github.com/jinqijinqi/Artificial-Intelligence-Course/blob/main/homework/%E9%A1%B9%E7%9B%AE%201-pytorch%E5%AE%89%E8%A3%85.docx)<br/>
