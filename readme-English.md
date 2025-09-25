@@ -1192,6 +1192,1870 @@ if __name__=='__main__':
 
 ```
 
+## Week 5-1. (5-1games1-w5-1)
+# In Class — SAME Problem: Tic-Tac-Toe (Minimax/Alpha–Beta/Eval)
+
+**Representation** Board is 3×3 (row-major string of 9 chars), MAX='X', MIN='O', '.' empty.
+**Given position (MAX to move)**: `X.O..O...`
+
+## Tasks
+1) **Depth-2 minimax** by hand: enumerate MAX moves, then optimal MIN replies; leaf utilities $U\in$ {+1,0,-1}.  
+2) **Alpha–Beta trace** with move ordering (center > corner > edge): write α/β updates and pruned branches.  
+3) **Depth-limited evaluation (D=3)**: propose $\mathrm{Eval}(s)=w^\top\phi(s)$ with features:
+   - open X two-in-a-row, open O two-in-a-row, center control, #X corners.  
+   Give compact formula and evaluate the given position.  
+4) **Quiescence**: find a position where static depth-1 eval fails (horizon effect). Propose a tactical extension rule for TTT.
+
+# Out Class Homework — SAME Problem Programmatically: Minimax, Alpha–Beta & Eval on Tic-Tac-Toe
+
+Implement:
+1) **Game API**: `legal_moves`, `next_state`, `is_terminal`, `winner`, pretty-print.  
+2) **minimax(s, depth)** with node counts; **alphabeta(s, depth)** with ordering (center>corner>edge) + transposition table.  
+3) **Evaluation** $w^\top\phi$: (open-X-2s, open-O-2s, centerX, cornerX). Do grid search for w to maximize win rate vs depth-2 minimax.  
+4) **Experiments**: on 50 random mid-game states, compare expanded nodes and αβ speedup across depths; plot depth vs nodes.  
+5) **(Optional)** iterative deepening with time budget; killer-move ordering.
+
+```python
+from typing import List, Tuple, Optional, Dict
+
+MAX, MIN = 'X', 'O'
+
+def pretty(s: str) -> str:
+    g = [s[i:i+3] for i in range(0,9,3)]
+    return "\n".join(" ".join(c if c != '.' else '_' for c in row) for row in g)
+
+def player_to_move(s: str) -> str:
+    return MAX if s.count(MAX) == s.count(MIN) else MIN
+
+def legal_moves(s: str) -> List[int]:
+    return [i for i,c in enumerate(s) if c == '.']
+
+def next_state(s: str, a: int) -> str:
+    p = player_to_move(s)
+    return s[:a] + p + s[a+1:]
+
+def lines() -> List[Tuple[int,int,int]]:
+    return [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+
+def winner(s: str) -> Optional[str]:
+    for a,b,c in lines():
+        if s[a] != '.' and s[a] == s[b] == s[c]:
+            return s[a]
+    return None
+
+def is_terminal(s: str) -> bool:
+    return winner(s) is not None or '.' not in s
+
+def utility(s: str) -> int:
+    w = winner(s)
+    if w == MAX: return +1
+    if w == MIN: return -1
+    return 0
+
+# ---- Evaluation ----
+def eval_features(s: str) -> Tuple[int,int,int,int]:
+    # (open-X-2s, open-O-2s, centerX, cornerX)
+    openX = openO = 0
+    for a,b,c in lines():
+        line = s[a]+s[b]+s[c]
+        if line.count(MIN)==0 and line.count(MAX)==2: openX += 1
+        if line.count(MAX)==0 and line.count(MIN)==2: openO += 1
+    centerX = 1 if s[4]==MAX else 0
+    corners = [0,2,6,8]
+    cornerX = sum(1 for i in corners if s[i]==MAX)
+    return (openX, openO, centerX, cornerX)
+
+def eval_linear(s: str, w=(3, -3, 1, 1)) -> int:
+    f = eval_features(s)
+    return sum(wi*fi for wi,fi in zip(w,f))
+
+# ---- Minimax / Alpha-Beta ----
+def minimax(s: str, depth: int) -> Tuple[int, Optional[int], int]:
+    """Return (value, best_move, nodes) from perspective of player_to_move(s)."""
+    nodes = 0
+    def mm(state, d) -> int:
+        nonlocal nodes
+        nodes += 1
+        if is_terminal(state) or d == 0:
+            return utility(state) if is_terminal(state) else eval_linear(state)
+        p = player_to_move(state)
+        moves = legal_moves(state)
+        if p == MAX:
+            best = -10**9
+            for a in moves:
+                best = max(best, mm(next_state(state,a), d-1))
+            return best
+        else:
+            best = 10**9
+            for a in moves:
+                best = min(best, mm(next_state(state,a), d-1))
+            return best
+    p = player_to_move(s)
+    best_move = None
+    best_val = -10**9 if p==MAX else 10**9
+    for a in legal_moves(s):
+        v = mm(next_state(s,a), depth-1)
+        if (p==MAX and v>best_val) or (p==MIN and v<best_val):
+            best_val, best_move = v, a
+    return best_val, best_move, nodes
+
+def move_order_heuristic(s: str, moves: List[int]) -> List[int]:
+    # center > corners > edges
+    center = [4]; corners = [0,2,6,8]; edges = [1,3,5,7]
+    order = center + corners + edges
+    return sorted(moves, key=lambda a: order.index(a) if a in order else 99)
+
+def alphabeta(s: str, depth: int, w=(3,-3,1,1)) -> Tuple[int, Optional[int], int, int]:
+    """Return (value, best_move, nodes, prunes)."""
+    nodes = prunes = 0
+    TT: Dict[Tuple[str,int], int] = {}  # simple transposition: (state,depth)->value
+
+    def ab(state, d, alpha, beta) -> int:
+        nonlocal nodes, prunes
+        nodes += 1
+        key = (state, d)
+        if key in TT:
+            return TT[key]
+        if is_terminal(state) or d == 0:
+            val = utility(state) if is_terminal(state) else eval_linear(state, w)
+            TT[key] = val
+            return val
+        p = player_to_move(state)
+        moves = move_order_heuristic(state, legal_moves(state))
+        if p == MAX:
+            val = -10**9
+            for a in moves:
+                val = max(val, ab(next_state(state,a), d-1, alpha, beta))
+                alpha = max(alpha, val)
+                if alpha >= beta:
+                    prunes += 1
+                    break
+            TT[key]=val; return val
+        else:
+            val = 10**9
+            for a in moves:
+                val = min(val, ab(next_state(state,a), d-1, alpha, beta))
+                beta = min(beta, val)
+                if alpha >= beta:
+                    prunes += 1
+                    break
+            TT[key]=val; return val
+
+if __name__ == "__main__":
+    s = "X.O..O..."
+    print(pretty(s))
+    print("Player to move:", player_to_move(s))
+    v1, a1, n1 = minimax(s, depth=4)
+    print("Minimax depth=4:", v1, "move", a1, "nodes", n1)
+    v2, a2, n2, p2 = alphabeta(s, depth=6)
+    print("AlphaBeta depth=6:", v2, "move", a2, "nodes", n2, "prunes", p2)
+```
+## Week 5-2. (5-2games2-w5-2)
+# InClass — SAME Problem: Dice-to-21 (Expectimax with Chance Nodes)
+
+**Rules**  
+Score $s\in\{0,\dots\}$. On each turn, MAX chooses **roll** or **stop**.  
+- **stop**: terminal payoff $U = s$.  
+- **roll**: chance node; add $X\sim\mathrm{Unif}\{1,\dots,6\}$ to score. If new score $>21$ (**bust**), terminal payoff $U=-10$.
+
+**Tasks**
+1) **Depth-2 expectimax** from $s=18$: compute value of `roll` vs `stop` under **risk-neutral** $U(x)=x$. Which action is better?  
+2) **Risk-averse** utility $U(x)=\sqrt{\max(x,0)} - 2\cdot \max(-x,0)$. Recompute (1). Does the decision change?  
+3) **Cutoff $D=4$ with Eval**: propose $\phi(s)=(s,\ \mathbb{1}[s\ge 20],\ \mathbb{1}[s\le 15])$ and a linear $w$. Evaluate a partial tree at $s=12$.  
+4) **Sampling**: at a roll node, estimate expectation with $k=3$ samples; discuss variance vs bias.
+
+**Deliverables**: your tree sketches and numeric values (show arithmetic).
+
+# OutClass Homework — SAME Problem Programmatically: Expectimax on Dice-to-21
+
+Implement:
+1) **Game API** with chance nodes: `succ_max(s)` (actions), `succ_chance(s, a)` → outcomes with probs, `is_terminal(s)`, `utility(s)`.  
+2) **expectimax(state, depth, utility_fn, eval_fn)** supporting MAX and CHANCE; depth-limited with cutoff + Eval.  
+3) **Risk studies**: compare policies under (a) risk-neutral $U(x)=x$, (b) risk-averse $U(x)=\sqrt{x_+}-\lambda x_-$ for $\lambda\in\{1,2,4\}$.  
+4) **Sampling expectimax**: at chance nodes, use $k\in\{2,4,8\}$ samples; report value error vs exact and node counts.  
+5) **(Optional)** MCTS (UCT) baseline with 10k rollouts; compare move choice at $s=18$.
+
+Deliverables: code + short report (tables of values, node counts, plots of k vs error).
+
+```python
+from typing import Dict, Tuple, Callable
+import random, math
+
+# --------- Dice-to-21 ---------
+TARGET = 21
+
+def utility_risk_neutral(x: int) -> float:
+    return float(x)
+
+def utility_risk_averse(x: int, lam: float=2.0) -> float:
+    xp = max(x, 0); xn = max(-x, 0)
+    return math.sqrt(xp) - lam * xn
+
+def succ_max(s: int):
+    """Return list of actions at MAX state s."""
+    return ["stop", "roll"]
+
+def succ_chance(s: int, a: str):
+    """Return list of outcomes (prob, next_state, immediate_reward_flag)."""
+    if a == "stop":
+        # terminal handled by is_terminal/utility; no chance children
+        return []
+    # roll: outcomes 1..6, uniform
+    outcomes = []
+    for x in range(1,7):
+        sp = s + x
+        outcomes.append((1/6.0, sp))
+    return outcomes
+
+def is_terminal(s: int, last_action: str=None) -> bool:
+    if last_action == "stop": return True
+    return s > TARGET
+
+def terminal_payoff(s: int, last_action: str=None) -> int:
+    if last_action == "stop":
+        return s
+    # bust
+    return -10
+
+# --------- Expectimax ---------
+def expectimax(state: int, depth: int,
+               utility_fn: Callable[[int], float]=utility_risk_neutral,
+               eval_fn: Callable[[int], float]=lambda s: s,
+               last_action: str=None):
+    """
+    Returns (value, best_action, nodes) from MAX perspective under chance.
+    Depth-limited: at depth==0, use eval_fn(state).
+    """
+    nodes = 0
+    from functools import lru_cache
+
+    @lru_cache(maxsize=None)
+    def max_node(s: int, d: int):
+        nonlocal nodes
+        nodes += 1
+        if is_terminal(s, None):  # bust state (s>TARGET)
+            return utility_fn(terminal_payoff(s, None)), None
+        if d == 0:
+            return eval_fn(s), None
+        best_val = -1e18
+        best_act = None
+        for a in succ_max(s):
+            if a == "stop":
+                val = utility_fn(terminal_payoff(s, "stop"))
+            else:
+                val = chance_node(s, a, d-1)
+            if val > best_val:
+                best_val, best_act = val, a
+        return best_val, best_act
+
+    @lru_cache(maxsize=None)
+    def chance_node(s: int, a: str, d: int):
+        nonlocal nodes
+        nodes += 1
+        # expectation over outcomes
+        ev = 0.0
+        for p, sp in succ_chance(s, a):
+            if is_terminal(sp, None):
+                ev += p * utility_fn(terminal_payoff(sp, None))
+            elif d == 0:
+                ev += p * eval_fn(sp)
+            else:
+                val, _ = max_node(sp, d)
+                ev += p * val
+        return ev
+
+    val, act = max_node(state, depth)
+    return val, act, nodes
+
+# --------- Sampling Expectimax ---------
+def expectimax_sample(state: int, depth: int, k: int=4,
+                      utility_fn: Callable[[int], float]=utility_risk_neutral,
+                      eval_fn: Callable[[int], float]=lambda s: s):
+    """
+    Monte Carlo at chance nodes: sample k outcomes (with replacement).
+    """
+    nodes = 0
+    def max_node(s: int, d: int):
+        nonlocal nodes
+        nodes += 1
+        if is_terminal(s, None):
+            return utility_fn(terminal_payoff(s, None)), None
+        if d == 0:
+            return eval_fn(s), None
+        best_val, best_act = -1e18, None
+        for a in succ_max(s):
+            if a == "stop":
+                val = utility_fn(terminal_payoff(s, "stop"))
+            else:
+                val = chance_node(s, a, d-1)
+            if val > best_val:
+                best_val, best_act = val, a
+        return best_val, best_act
+
+    def chance_node(s: int, a: str, d: int):
+        nonlocal nodes
+        nodes += 1
+        ev = 0.0
+        for _ in range(k):
+            x = random.randint(1,6)
+            sp = s + x
+            if is_terminal(sp, None):
+                ev += utility_fn(terminal_payoff(sp, None))
+            elif d == 0:
+                ev += eval_fn(sp)
+            else:
+                v, _ = max_node(sp, d)
+                ev += v
+        return ev / k
+
+    return max_node(state, depth) + (nodes,)
+
+# --------- Simple evals ---------
+def eval_linear(s: int):
+    # features: (score, near_target, far)
+    return 1.0*s + 5.0*(1 if s>=20 else 0) - 3.0*(1 if s<=15 else 0)
+
+if __name__ == "__main__":
+    for depth in [2,3,4]:
+        v, a, n = expectimax(18, depth, utility_fn=utility_risk_neutral, eval_fn=eval_linear)
+        print(f"depth={depth} -> value={v:.3f}, act={a}, nodes={n}")
+    v2, a2, n2 = expectimax(18, 3, utility_fn=lambda x: (x if x>=0 else -2*abs(x)), eval_fn=eval_linear)
+    print("risk-averse depth=3 ->", v2, a2, n2)
+    vs, as_, ns = expectimax_sample(18, 4, k=4, eval_fn=eval_linear)
+    print("sampling depth=4 k=4 ->", vs, as_, ns)
+```
+
+# Week 6-1:(6-1csps1-w6-1)
+# InClass — SAME Problem: Australia Map Coloring
+
+**Variables & domains**  
+$X=\{\mathrm{WA},\mathrm{NT},\mathrm{SA},\mathrm{Q},\mathrm{NSW},\mathrm{V},\mathrm{T}\}$.  
+$\mathrm{Dom}=\{\text{R},\text{G},\text{B}\}$.
+
+**Binary constraints** (neighbors must differ)  
+Edges: (WA,NT), (WA,SA), (NT,SA), (NT,Q), (SA,Q), (SA,NSW), (SA,V), (Q,NSW), (NSW,V).  
+Tasmania (T) is isolated ⇒ independent.
+
+## Tasks
+1) **Factor-graph sketch**: circles for provinces, squares for $[u\neq v]$.  
+2) **Backtracking by hand (first few steps)**  
+   - Use **MRV** (minimum remaining values) + **degree** tie-break: start with SA (highest degree).  
+   - Try SA=R. Forward-check neighbors’ domains; continue 3–4 assignments; document any dead ends & backtracks.  
+3) **Decomposition**: after mainland is colored, color T arbitrarily (any of R/G/B).  
+4) **Deliverable**: your chosen consistent coloring and the order you assigned variables.
+
+_Note_: Any consistent coloring earns full credit; show your reasoning and pruning.
+
+# OutClass Homework — SAME Problem Programmatically: Australia Map Coloring (CSP)
+
+Implement a tiny CSP toolkit and solve the Australia map:
+
+1) **CSP core**  
+   - Structures for `variables`, `domains`, and `constraints` (binary predicates).  
+   - A function `neighbors(var)`.
+
+2) **Backtracking search**  
+   - Variable ordering: **MRV + degree tie-break**.  
+   - Value ordering: try least-constraining value (LCV).  
+   - **Forward checking** (propagate domain wipe-outs) with undo stack.
+
+3) **Logs & metrics**  
+   - Count nodes, backtracks; print the assignment order and domains after forward checking.
+
+4) **Experiments**  
+   - Compare plain backtracking vs +MRV vs +MRV+LCV vs +MRV+LCV+FC (forward checking).  
+   - Report node counts on Australia; optionally add **N-Queens (N=8)** as a second CSP.
+
+5) **(Optional)**  
+   - Implement **AC-3** and compare with forward checking.  
+   - Add **event scheduling** (Formulation 1) and solve a toy instance.
+
+**Deliverables**: code + ≤2-page note (tables with node counts and brief analysis).
+
+```python
+from typing import Dict, List, Callable, Set, Tuple, Optional, Iterable
+
+Assignment = Dict[str, str]
+Domain = Dict[str, List[str]]
+Constraint = Callable[[str, str, str, str], bool]  # (xi, vi, xj, vj) -> ok?
+
+class CSP:
+    def __init__(self, variables: List[str], domains: Domain):
+        self.variables = variables
+        self.domains = {v: list(domains[v]) for v in variables}
+        self.neigh: Dict[str, Set[str]] = {v: set() for v in variables}
+        self.binary_constraints: List[Tuple[str, str, Constraint]] = []
+
+    def add_binary_constraint(self, xi: str, xj: str, pred: Constraint):
+        self.neigh[xi].add(xj)
+        self.neigh[xj].add(xi)
+        self.binary_constraints.append((xi, xj, pred))
+        self.binary_constraints.append((xj, xi, lambda a,va,b,vb,pred=pred: pred(b,vb,a,va)))
+
+    def neighbors(self, x: str) -> Set[str]:
+        return self.neigh[x]
+
+    def consistent_pair(self, xi: str, vi: str, xj: str, vj: str) -> bool:
+        # check constraints involving (xi,xj)
+        for a,b,p in self.binary_constraints:
+            if a==xi and b==xj:
+                if not p(xi,vi,xj,vj): return False
+        return True
+
+# ---------- Heuristics ----------
+def mrv(assignment: Assignment, csp: CSP) -> str:
+    unassigned = [x for x in csp.variables if x not in assignment]
+    # min remaining values
+    lens = {x: sum(all(csp.consistent_pair(x,v, y, assignment[y]) for y in csp.neighbors(x) if y in assignment)
+                   for v in csp.domains[x]) for x in unassigned}
+    m = min(lens.values())
+    candidates = [x for x in unassigned if lens[x]==m]
+    if len(candidates)==1:
+        return candidates[0]
+    # degree tie-break: choose variable with most constraints on unassigned vars
+    def degree(x): 
+        return sum(1 for y in csp.neighbors(x) if y not in assignment)
+    candidates.sort(key=lambda x: -degree(x))
+    return candidates[0]
+
+def lcv(x: str, assignment: Assignment, csp: CSP) -> List[str]:
+    # least-constraining value ordering
+    def score(v):
+        cnt = 0
+        for y in csp.neighbors(x):
+            if y in assignment: 
+                continue
+            for w in csp.domains[y]:
+                if not csp.consistent_pair(x,v,y,w):
+                    cnt += 1
+        return cnt
+    return sorted(csp.domains[x], key=score)
+
+# ---------- Forward Checking with undo ----------
+def forward_check(x: str, v: str, assignment: Assignment, csp: CSP):
+    # prune domains of neighbors; return list of (var, removed_values) to undo
+    removed = []
+    for y in csp.neighbors(x):
+        if y in assignment: 
+            continue
+        to_remove = [w for w in csp.domains[y] if not csp.consistent_pair(x,v,y,w)]
+        if to_remove:
+            csp.domains[y] = [w for w in csp.domains[y] if w not in to_remove]
+            removed.append((y, to_remove))
+            if not csp.domains[y]:
+                return False, removed
+    return True, removed
+
+def undo(removed, csp: CSP):
+    for y, vals in removed:
+        # restore in any order; keep unique
+        cur = set(csp.domains[y])
+        for w in vals:
+            if w not in cur:
+                csp.domains[y].append(w)
+
+# ---------- Backtracking ----------
+def backtracking_search(csp: CSP, use_lcv=True, use_fc=True):
+    assignment: Assignment = {}
+    nodes = 0; backtracks = 0
+    order_log = []
+
+    def backtrack():
+        nonlocal nodes, backtracks
+        if len(assignment)==len(csp.variables):
+            return True
+        x = mrv(assignment, csp)
+        values = lcv(x, assignment, csp) if use_lcv else list(csp.domains[x])
+        for v in values:
+            nodes += 1
+            # check consistency with assigned neighbors
+            ok = all(csp.consistent_pair(x,v,y,assignment[y]) for y in csp.neighbors(x) if y in assignment)
+            if not ok: 
+                continue
+            assignment[x]=v; order_log.append((x,v))
+            removed = []
+            if use_fc:
+                ok, removed = forward_check(x,v,assignment,csp)
+            if ok:
+                if backtrack():
+                    return True
+            # undo
+            if use_fc:
+                undo(removed, csp)
+            order_log.pop(); assignment.pop(x, None)
+        backtracks += 1
+        return False
+
+    success = backtrack()
+    return success, assignment, nodes, backtracks, order_log
+
+# ---------- Australia instance ----------
+def australia_csp():
+    vars = ["WA","NT","SA","Q","NSW","V","T"]
+    dom = {v:["R","G","B"] for v in vars}
+    csp = CSP(vars, dom)
+    edges = [("WA","NT"),("WA","SA"),("NT","SA"),("NT","Q"),
+             ("SA","Q"),("SA","NSW"),("SA","V"),("Q","NSW"),("NSW","V")]
+    ne = lambda xi,vi,xj,vj: vi != vj
+    for a,b in edges:
+        csp.add_binary_constraint(a,b,ne)
+    return csp
+
+if __name__ == "__main__":
+    csp = australia_csp()
+    ok, sol, nodes, backs, log = backtracking_search(csp, use_lcv=True, use_fc=True)
+    print("Solved:", ok, "nodes:", nodes, "backtracks:", backs)
+    print("Solution:", sol)
+    print("Order:", log)
+```
+
+# Week 6-2: (6-2csps2-w6-2)
+# InClass — SAME Problem: 3‑Step Object Tracking (Backtracking · FC/AC‑3 · Beam · ICM)
+
+**Setup** Three variables $X_1,X_2,X_3\in\{0,1,2\}$. Observations $o=(0,2,2)$.
+Observation factors $O_i(x_i)=\max(0, 2-|x_i-o_i|)$ giving $[2,1,0]$ around $o_i$.  
+Transition factors $T_i(x_i,x_{i+1}) = 2$ if equal, $1$ if $|x_i-x_{i+1}|=1$, else $0$.
+
+## Tasks
+1) **Partial‑weight demo**: with assignment $x=\{X_1=0\}$, compute dependent factors when extending $X_2$ by v∈{0,1,2}.  
+2) **Forward checking**: after setting $X_2=2$, cross out from $X_1,X_3$ any values with $T_1,T_2=0$. Show remaining domains.  
+3) **AC‑3 trace**: starting from empty domains $\{0,1,2\}$, run AC‑3 once **using zeros in $T_i$**; write any values removed.  
+4) **Beam (K=2)**: expand level by level; list top‑2 partials and their weights at depths 1,2,3.  
+5) **ICM (one pass)**: from initial (0,0,0), update $X_2$ then $X_3$ then $X_1$ using local products; show new assignment and weight.
+
+# OutClass Homework — SAME Problem Programmatically: Tracking with Backtracking/AC‑3 · Beam · ICM
+
+1) **Data model** Build factors: domains {0,1,2}; $O_i(x)=\max(0,2-|x-o_i|)$ for $o=(0,2,2)$;
+$T_i(x,y)=2\,[x=y]+1\,[|x-y|=1]$.
+
+2) **Backtracking** with MCV/MRV + LCV + **forward checking**, computing partial weights via dependent factors.
+
+3) **AC‑3** (binary, zero‑support pruning) and plug into backtracking (run AC‑3 on domain updates).
+
+4) **Beam search** (K∈{1,2,3}) on partial weights; report best full assignment and weight; compare node counts vs backtracking.
+
+5) **ICM** starting from 5 random initializations; report best weight reached and frequency of local optima.
+
+6) **(Optional)** Add soft constraints on “acceleration” $A_i=|x_{i+1}-2x_i+x_{i-1}|$ with factor $\exp(-\lambda A_i)$; redo (2)-(5).
+
+**Deliverables**: code + ≤2‑page report (tables: nodes/weights; short discussion).
+
+```python
+from typing import Dict, List, Tuple, Callable, Optional
+import itertools, random
+
+Var = str
+Val = int
+Assignment = Dict[Var, Val]
+
+class WeightedCSP:
+    def __init__(self, variables: List[Var], domains: Dict[Var, List[Val]]):
+        self.variables = variables
+        self.domains = {v:list(domains[v]) for v in variables}
+        # factors: unary[var] -> dict[val]->w ; binary[(u,v)] -> dict[(a,b)]->w
+        self.unary = {v:{} for v in variables}
+        self.binary = {}  # key is ordered pair (u,v)
+        self.neigh = {v:set() for v in variables}
+
+    def add_unary(self, v: Var, table: Dict[Val, float]):
+        self.unary[v] = dict(table)
+
+    def add_binary(self, u: Var, v: Var, table: Dict[Tuple[Val,Val], float]):
+        self.binary[(u,v)] = dict(table)
+        self.binary[(v,u)] = {(b,a):w for (a,b),w in table.items()}
+        self.neigh[u].add(v); self.neigh[v].add(u)
+
+    # ----- factor evaluation -----
+    def dep_weight(self, x: Assignment, var: Var, val: Val) -> float:
+        """Product of factors touching var whose other vars are already assigned in x."""
+        w = 1.0
+        # unary
+        if self.unary[var]:
+            w *= self.unary[var].get(val, 0.0)
+        # binary with assigned neighbors
+        for nb in self.neigh[var]:
+            if nb in x:
+                w *= self.binary[(var,nb)].get((val, x[nb]), 0.0)
+        return w
+
+    def full_weight(self, x: Assignment) -> float:
+        # assumes all variables assigned
+        w = 1.0
+        for v in self.variables:
+            if self.unary[v]: w *= self.unary[v].get(x[v], 0.0)
+        for (u,v), tab in self.binary.items():
+            if (u < v):  # count each undirected pair once
+                w *= tab.get((x[u], x[v]), 0.0)
+        return w
+
+# ---------- Lookahead: forward checking ----------
+def forward_check(csp: WeightedCSP, x: Assignment, var: Var, val: Val):
+    """Return (ok, removed) where removed is list of (y, values) pruned; prune only 0-supported values."""
+    removed = []
+    for y in csp.neigh[var]:
+        if y in x: continue
+        to_rm = []
+        for b in list(csp.domains[y]):
+            # check if any factor forbids (var=val, y=b)
+            w = csp.binary[(var,y)].get((val,b), 0.0)
+            if w == 0.0:
+                to_rm.append(b)
+        if to_rm:
+            removed.append((y, to_rm))
+            csp.domains[y] = [b for b in csp.domains[y] if b not in to_rm]
+            if not csp.domains[y]:
+                return False, removed
+    return True, removed
+
+def undo_fc(csp: WeightedCSP, removed):
+    for y, vals in removed:
+        for b in vals:
+            if b not in csp.domains[y]:
+                csp.domains[y].append(b)
+
+# ---------- AC-3 ----------
+from collections import deque
+def enforce_arc_consistency(csp: WeightedCSP):
+    """AC-3 using zero-support pruning on binary factors."""
+    q = deque()
+    for (u,v) in csp.binary.keys():
+        q.append((u,v))
+    changed = False
+    while q:
+        u,v = q.popleft()
+        dom_u = list(csp.domains[u])
+        removed = False
+        for a in dom_u:
+            # check if a has any supporting b in v's domain with nonzero factor
+            ok = any(csp.binary[(u,v)].get((a,b),0.0) > 0.0 for b in csp.domains[v])
+            if not ok:
+                csp.domains[u].remove(a)
+                removed = True
+                changed = True
+        if removed:
+            for w in csp.neigh[u]:
+                if w != v:
+                    q.append((w,u))
+    return changed
+
+# ---------- Heuristics ----------
+def mrv(csp: WeightedCSP, x: Assignment) -> Var:
+    unassigned = [v for v in csp.variables if v not in x]
+    # MRV: smallest domain size
+    k = min(len(csp.domains[v]) for v in unassigned)
+    cands = [v for v in unassigned if len(csp.domains[v]) == k]
+    # tie-break by degree
+    cands.sort(key=lambda v: -len([nb for nb in csp.neigh[v] if nb not in x]))
+    return cands[0]
+
+def lcv_values(csp: WeightedCSP, x: Assignment, var: Var) -> List[Val]:
+    def score(val):
+        # count how many neighbor values remain nonzero-compatible
+        s = 0
+        for nb in csp.neigh[var]:
+            if nb in x: continue
+            s += sum(1 for b in csp.domains[nb] if csp.binary[(var,nb)].get((val,b),0.0) > 0.0)
+        return -s  # smaller is worse
+    return sorted(list(csp.domains[var]), key=score)
+
+# ---------- Backtracking ----------
+def backtracking(csp: WeightedCSP):
+    x: Assignment = {}
+    best = (0.0, None)  # (weight, assignment)
+    nodes = 0; backs = 0
+
+    # optional AC-3 before search
+    enforce_arc_consistency(csp)
+
+    def dfs():
+        nonlocal nodes, backs, best
+        if len(x) == len(csp.variables):
+            w = csp.full_weight(x)
+            if w > best[0]: best = (w, dict(x))
+            return True
+        var = mrv(csp, x)
+        for val in lcv_values(csp, x, var):
+            nodes += 1
+            delta = csp.dep_weight(x, var, val)
+            if delta == 0.0: 
+                continue
+            x[var] = val
+            # forward check + AC-3
+            ok, removed = forward_check(csp, x, var, val)
+            if ok:
+                enforce_arc_consistency(csp)
+                dfs()
+            undo_fc(csp, removed)
+            x.pop(var, None)
+        backs += 1
+        return False
+
+    dfs()
+    return best, nodes, backs
+
+# ---------- Beam search ----------
+def beam_search(csp: WeightedCSP, K: int):
+    # candidates are (assignment, weight)
+    cand = [({}, 1.0)]
+    for var in csp.variables:
+        # extend all
+        ext = []
+        for x, w in cand:
+            for val in csp.domains[var]:
+                delta = csp.dep_weight(x, var, val)
+                if delta == 0.0: 
+                    continue
+                x2 = dict(x); x2[var] = val
+                ext.append((x2, w*delta))
+        # keep top-K by weight
+        ext.sort(key=lambda t: t[1], reverse=True)
+        cand = ext[:K] if ext else []
+        if not cand: break
+    # pick best full if exists
+    best = max(cand, key=lambda t: t[1]) if cand else ({}, 0.0)
+    return best
+
+# ---------- Local search (ICM) ----------
+def icm(csp: WeightedCSP, iters: int=10, seed: int=0):
+    random.seed(seed)
+    # random full assignment (not guaranteed positive weight)
+    x = {v: random.choice(csp.domains[v]) for v in csp.variables}
+    def local_weight(var, val):
+        # local product: unary(var) * binaries with neighbors
+        w = csp.unary[var].get(val, 1.0) if csp.unary[var] else 1.0
+        for nb in csp.neigh[var]:
+            b = x[nb]
+            w *= csp.binary[(var,nb)].get((val, b), 0.0)
+        return w
+    improved = True
+    steps = 0
+    while improved and steps < iters:
+        improved = False; steps += 1
+        for v in csp.variables:
+            best = max(csp.domains[v], key=lambda a: local_weight(v,a))
+            if local_weight(v, best) > local_weight(v, x[v]):
+                x[v] = best; improved = True
+    # compute full weight at end (includes unary of all vars and binaries once)
+    return x
+
+# ---------- Instance: 3-step tracking ----------
+def build_tracking_instance():
+    vars = ["X1","X2","X3"]
+    doms = {v:[0,1,2] for v in vars}
+    csp = WeightedCSP(vars, doms)
+    obs = { "X1":0, "X2":2, "X3":2 }
+    # unary obs factors: 2,1,0 by distance
+    for v in vars:
+        table = {a: max(0, 2-abs(a-obs[v])) for a in doms[v]}
+        csp.add_unary(v, table)
+    # binary transitions
+    def trans(a,b):
+        if a==b: return 2
+        if abs(a-b)==1: return 1
+        return 0
+    for (u,v) in [("X1","X2"),("X2","X3")]:
+        tab = {}
+        for a in doms[u]:
+            for b in doms[v]:
+                tab[(a,b)] = trans(a,b)
+        csp.add_binary(u,v, tab)
+    return csp
+
+if __name__ == "__main__":
+    csp = build_tracking_instance()
+    best, nodes, backs = backtracking(csp)
+    print("Backtracking best:", best, "nodes:", nodes, "backs:", backs)
+    csp2 = build_tracking_instance()
+    print("Beam K=2:", beam_search(csp2, K=2))
+    csp3 = build_tracking_instance()
+    print("ICM:", icm(csp3, iters=10, seed=0))
+```
+
+# Week 7-1: (7-1markov-bayesnets1-w7-1)
+# InClass — SAME Problem: 3-Step 1D Tracking (as MRF & as BN/HMM)
+
+**Domains** $X_1,X_2,X_3\in\{0,1,2\}$. Observations $o=(0,2,2)$.
+
+**MRF factors (undirected)**  
+Observation $o_i(x_i)=\max(0,2-|x_i-o_i|)$ → table values in $\{0,1,2\}$.  
+Transition $t_i(x_i,x_{i+1})=\begin{cases}2&x_i=x_{i+1}\\1&|x_i-x_{i+1}|=1\\0&\text{else}\end{cases}$.
+
+**Tasks (MRF)**
+1) **Exact $Z$ & marginals**: enumerate all assignments with non-zero weight to get  
+   $Z=\sum_x \prod o_i(x_i)\,t_1(x_1,x_2)\,t_2(x_2,x_3)$. Then compute $P(X_2=1)$, $P(X_2=2)$.  
+   Compare with the **max-weight assignment**.  
+2) **One Gibbs update**: with $x_1{=}1,x_3{=}2$, compute unnormalized weights for $x_2\in\{0,1,2\}$  
+   via touching factors $o_2,t_1,t_2$, normalize to get $P(X_2=\cdot\mid X_1{=}1,X_3{=}2)$.
+
+**BN view (HMM)**  
+Directed chain $H_1\to H_2\to H_3$, emissions $H_i\to E_i$ with $E_i=o_i$.  
+Take $p(H_{i+1}\mid H_i)\propto t_i$; $p(E_i\mid H_i)\propto o_i$ (row-normalized).
+
+3) **Posterior on middle state**: compute/derive $P(H_2\mid E_1{=}0,E_2{=}2,E_3{=}2)$ qualitatively (or by simple enumeration/forward pass).  
+4) (**Optional, explaining away mini-case**) Using the alarm network $B,E\to A$: compare $P(B{=}1\mid A{=}1)$ vs $P(B{=}1\mid A{=}1,E{=}1)$.
+
+# OutClass Homework — SAME Problem Programmatically: 3-Step Tracking as MRF & BN
+
+**Part A — MRF (exact + Gibbs)**
+1) Build factors $o_i,t_i$. Enumerate all assignments, compute $Z$ and marginals $P(X_i)$.  
+2) Implement **Gibbs sampling** (systematic scan). Track counts of $X_2$ after burn-in; compare to exact $P(X_2)$.  
+   Plot iterations vs $\ell_\infty$ error of marginals.
+
+**Part B — BN/HMM (exact)**
+3) Construct a BN with chain $H_1\to H_2\to H_3$, emissions $H_i\to E_i$ (row-normalize from $t_i,o_i$).  
+4) Implement exact inference for $P(H_2\mid E_1{=}0,E_2{=}2,E_3{=}2)$ by enumeration or forward–backward. Compare to MRF $P(X_2)$.
+
+**(Optional) Explaining away**
+5) Implement the **alarm BN** with $p(b){=}\varepsilon,\ p(e){=}\varepsilon,\ p(a\mid b,e)=[a=b\lor e]$.  
+   Show $P(B{=}1\mid A{=}1)=\frac{1}{2-\varepsilon}$, $P(B{=}1\mid A{=}1,E{=}1)=\varepsilon$.
+
+**Deliverables**: code + 1–2 page note (tables for exact vs Gibbs; BN posterior; plots).
+
+```python
+from typing import Dict, Tuple, List
+import itertools, math, random
+random.seed(0)
+
+# ----- MRF: object tracking (3 steps) -----
+dom = [0,1,2]
+obs = {1:0, 2:2, 3:2}  # o=(0,2,2)
+
+def o(i, x):
+    return max(0, 2-abs(x-obs[i]))
+
+def t(x, y):
+    if x==y: return 2
+    if abs(x-y)==1: return 1
+    return 0
+
+def weight(assign):  # assign: (x1,x2,x3)
+    x1,x2,x3 = assign
+    return o(1,x1)*o(2,x2)*o(3,x3)*t(x1,x2)*t(x2,x3)
+
+def enumerate_exact():
+    table = []
+    Z = 0.0
+    for a in itertools.product(dom, repeat=3):
+        w = weight(a)
+        if w>0:
+            table.append((a, w))
+            Z += w
+    # marginals for X2
+    p2 = {v:0.0 for v in dom}
+    for (x1,x2,x3), w in table:
+        p2[x2] += w/Z
+    # max-weight assignment
+    max_a, max_w = max(table, key=lambda t: t[1])
+    return Z, p2, max_a, max_w
+
+def gibbs(n_iters=5000, burn_in=500):
+    # initialize randomly among support
+    x = [random.choice(dom) for _ in range(3)]
+    # If zero weight, force to support
+    def cond_prob(i, x):
+        # return distribution over dom for Xi given others
+        probs = []
+        for v in dom:
+            y = x.copy()
+            y[i]=v
+            # local factors touching i: o_i, t with neighbors
+            if i==0:
+                w = o(1,v)*t(v,y[1])
+            elif i==1:
+                w = o(2,v)*t(y[0],v)*t(v,y[2])
+            else:
+                w = o(3,v)*t(y[1],v)
+            probs.append(max(0.0,w))
+        s = sum(probs)
+        probs = [p/s if s>0 else 1.0/len(dom) for p in probs]
+        return probs
+    counts = {v:0 for v in dom}
+    for it in range(n_iters):
+        for i in range(3):
+            probs = cond_prob(i, x)
+            r = random.random(); c=0.0
+            pick = 0
+            for idx,p in enumerate(probs):
+                c += p
+                if r<=c:
+                    pick=idx; break
+            x[i]=dom[pick]
+        if it>=burn_in:
+            counts[x[1]] += 1
+    total = sum(counts.values())
+    p2_hat = {v: counts[v]/total for v in dom}
+    return p2_hat
+
+# ----- BN/HMM: H1->H2->H3, emissions E1..E3 -----
+def row_norm_row(vs):
+    s = sum(vs)
+    return [vi/s if s>0 else 1.0/len(vs) for vi in vs]
+
+# transition CPT p(h_{i+1}|h_i) from t
+trans = {x: row_norm_row([t(x,y) for y in dom]) for x in dom}
+# emission CPT p(e|h) from o
+emit = {h: row_norm_row([o(1,h), o(1,h), o(1,h)]) for h in dom}  # same shape for each i; we will index by obs
+
+def forward_backward(evidence):
+    # evidence: dict {i: observed value at Ei} for i=1..3
+    # prior over H1: uniform
+    prior = [1/3]*3
+    # forward
+    alpha = [{} for _ in range(4)]  # 1..3
+    alpha[1] = {h: prior[h]*emit[h][evidence[1]] for h in dom}
+    def norm(d):
+        s = sum(d.values()); 
+        return {k: v/s for k,v in d.items()}
+    alpha[1] = norm(alpha[1])
+    alpha[2] = {h2: emit[h2][evidence[2]] * sum(alpha[1][h1]*trans[h1][h2] for h1 in dom) for h2 in dom}
+    alpha[2] = norm(alpha[2])
+    alpha[3] = {h3: emit[h3][evidence[3]] * sum(alpha[2][h2]*trans[h2][h3] for h2 in dom) for h3 in dom}
+    alpha[3] = norm(alpha[3])
+    # posterior of H2 via one-step smoothing: proportional to alpha2 * backward2
+    # backward from the end:
+    beta3 = {h:1.0 for h in dom}
+    beta2 = {h2: sum(trans[h2][h3]*emit[h3][evidence[3]]*beta3[h3] for h3 in dom) for h2 in dom}
+    # combine:
+    post2 = {h: alpha[2][h]*beta2[h] for h in dom}
+    s = sum(post2.values()); post2 = {k:v/s for k,v in post2.items()}
+    return post2
+
+# ----- Alarm BN illustrating explaining away -----
+def alarm_probs(eps=0.05):
+    # P(B=1|A=1) and P(B=1|A=1,E=1)
+    # Using formulas from lecture
+    p1 = 1.0/(2.0 - eps)
+    p2 = eps
+    return p1, p2
+
+if __name__ == "__main__":
+    Z, p2, argmax, w = enumerate_exact()
+    print("Exact Z:", Z, "P(X2):", p2, "argmax:", argmax, "w:", w)
+    print("Gibbs P(X2) ~", gibbs())
+    print("BN posterior H2 | E=(0,2,2):", forward_backward({1:0,2:2,3:2}))
+    print("Alarm explaining-away:", alarm_probs())
+```
+
+# Week 7-2 (7-2bayesnets2-w7-2)
+# InClass — SAME Problem: HMM (3 steps) + Prob. Programs + BN→MRF
+State domain $\{0,1,2\}$. Prior $p(H_1)=\mathrm{Unif}$. Transition $p(h_i\mid h_{i-1})=\frac12[\!h_i{=}h_{i-1}\!]+\frac14[\!|h_i-h_{i-1}|=1\!]$.  
+Emission $p(e_i\mid h_i)=\frac12[\!e_i{=}h_i\!]+\frac14[\!|e_i-h_i|=1\!]$. Evidence $(e_1,e_2,e_3)=(0,2,2)$.
+
+**Tasks**
+1) **Prob. program**: write pseudocode that samples $H_{1:3},E_{1:3}$; and the **alarm** program $B,E\sim\mathrm{Bern}(\varepsilon), A=B\lor E$.  
+2) **BN→MRF** with evidence: plug in $E\!=\!e$, then **remove unobserved leaves** and **discard disconnected components** for the query $P(H_2\mid E)$.  
+3) **Forward–Backward**: compute $F_1,F_2,F_3$ and $B_3,B_2,B_1$, then $P(H_2\mid E)$. Show your arithmetic (fractions are fine).  
+4) **One Gibbs update** on the reduced MRF for $H_2$ given neighbors.  
+5) **Particle filtering (K=4)**: show one full step at $i=3$: propose from each $h_2$, weight by $p(e_3\mid h_3)$, resample; report particle counts.
+
+# OutClass Homework — SAME Problem Programmatically: BN II (Gibbs · F–B · Particle Filter)
+
+**Part A — Prob. programming**
+- Implement `sample_alarm(eps)` and an HMM sampler `sample_hmm(T)`.
+
+**Part B — BN→MRF + Gibbs**
+- Build the reduced MRF for the toy medical BN (C,A,H,I) under evidence $H{=}1,I{=}1$; implement Gibbs to estimate $P(C{=}1\mid H{=}1,I{=}1)$.
+
+**Part C — HMM**
+- Implement **forward_backward(evidence)** (return marginals for all $H_i$);  
+- Implement **particle_filter(evidence,K)** with propose–weight–resample; track counts only for the last $H_i$.  
+- Compare filtering posteriors at $i=3$ for $K\in\{50,200,1000\}$ vs exact smoothing $P(H_3\mid E)$; report $\ell_1$ error and runtime.  
+- (Optional) Add **beam search** baseline (K same as particles) and discuss diversity vs accuracy.
+
+**Deliverables**: code + ≤2-page note (tables: posterior & error; brief discussion).
+
+```python
+from typing import Dict, List, Tuple
+import random, math
+random.seed(0)
+
+# ----- Probabilistic programs -----
+def bernoulli(eps: float) -> int:
+    return 1 if random.random() < eps else 0
+
+def sample_alarm(eps=0.05):
+    B = bernoulli(eps)
+    E = bernoulli(eps)
+    A = 1 if (B or E) else 0
+    return {"B":B,"E":E,"A":A}
+
+def sample_hmm(T=3, domain=(0,1,2)):
+    def trans(h_prev, h):
+        if h==h_prev: return 0.5
+        if abs(h-h_prev)==1: return 0.25
+        return 0.0
+    def emit(h, e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    H = [random.choice(domain)]
+    E = [random.choice(domain)]
+    # redraw E[0] conditioned on H[0]
+    E[0] = random.choices(domain, [emit(H[0],e) for e in domain])[0]
+    for i in range(1,T):
+        H.append(random.choices(domain, [trans(H[i-1],h) for h in domain])[0])
+        E.append(random.choices(domain, [emit(H[i],e) for e in domain])[0])
+    return H, E
+
+# ----- HMM Forward–Backward -----
+def forward_backward(evidence: List[int], domain=(0,1,2)):
+    n = len(evidence)
+    def trans(hp, h):
+        if h==hp: return 0.5
+        if abs(h-hp)==1: return 0.25
+        return 0.0
+    def emit(h, e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    # prior uniform
+    prior = {h:1/len(domain) for h in domain}
+    F = [ {h:0.0 for h in domain} for _ in range(n) ]
+    B = [ {h:1.0 for h in domain} for _ in range(n) ]
+    # forward
+    for h in domain:
+        F[0][h] = prior[h] * emit(h, evidence[0])
+    # normalize
+    s = sum(F[0].values());  F[0] = {h: F[0][h]/s for h in domain}
+    for i in range(1,n):
+        for h in domain:
+            F[i][h] = emit(h, evidence[i]) * sum(F[i-1][hp]*trans(hp,h) for hp in domain)
+        s = sum(F[i].values());  F[i] = {h: F[i][h]/s for h in domain}
+    # backward
+    for i in reversed(range(n-1)):
+        for h in domain:
+            B[i][h] = sum(B[i+1][hn]*trans(h,hn)*emit(hn, evidence[i+1]) for hn in domain)
+        s = sum(B[i].values());  B[i] = {h: B[i][h]/s for h in domain}
+    # smoothing
+    post = []
+    for i in range(n):
+        S = {h: F[i][h]*B[i][h] for h in domain}
+        s = sum(S.values()); S = {h: S[h]/s for h in domain}
+        post.append(S)
+    return F, B, post
+
+# ----- Particle Filter (filtering) -----
+def particle_filter(evidence: List[int], K=200, domain=(0,1,2), seed=0):
+    random.seed(seed)
+    def trans(hp, h):
+        if h==hp: return 0.5
+        if abs(h-hp)==1: return 0.25
+        return 0.0
+    def emit(h, e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    # initialize H1 ~ prior uniform but weight by emission
+    particles = random.choices(domain, k=K)
+    weights = [emit(h, evidence[0]) for h in particles]
+    # resample
+    def resample(parts, ws):
+        s = sum(ws)
+        if s==0: ws = [1.0/len(ws)]*len(ws)
+        else: ws = [w/s for w in ws]
+        # multinomial resampling
+        cs = []
+        c=0.0
+        for w in ws:
+            c+=w; cs.append(c)
+        new = []
+        for _ in parts:
+            r = random.random()
+            j=0
+            while r>cs[j]: j+=1
+            new.append(parts[j])
+        return new
+    particles = resample(particles, weights)
+    # iterate
+    for i in range(1, len(evidence)):
+        # propose
+        proposed = []
+        for hprev in particles:
+            proposed.append(random.choices(domain, [trans(hprev,h) for h in domain])[0])
+        # weight by emission
+        weights = [emit(h, evidence[i]) for h in proposed]
+        particles = resample(proposed, weights)
+    # counts for last Hi
+    counts = {h:0 for h in domain}
+    for h in particles: counts[h]+=1
+    total = sum(counts.values())
+    approx = {h: counts[h]/total for h in domain}
+    return approx, counts
+
+# ----- Gibbs on tiny medical BN: C,A cause H,I; evidence H=1,I=1 -----
+def gibbs_CA(num_iters=5000, burn=500, seed=0):
+    random.seed(seed)
+    # priors p(C=1)=0.1, p(A=1)=0.3; conditionals:
+    pC = 0.1; pA=0.3
+    # p(H=1|C,A): OR-like
+    def pH(c,a): return 0.9 if (c or a) else 0.1
+    # p(I=1|A): itchy if allergies
+    def pI(a): return 0.8 if a==1 else 0.2
+    # evidence H=1, I=1
+    c,a = 0,1
+    cntC1=0
+    for it in range(num_iters):
+        # sample C | A,H=1,I=1 ∝ p(C)p(H=1|C,A)
+        w0 = (1-pC)*pH(0,a)
+        w1 = pC*pH(1,a)
+        s = w0+w1
+        c = 1 if random.random() < (w1/s) else 0
+        # sample A | C,H=1,I=1 ∝ p(A)p(H=1|C,A)p(I=1|A)
+        w0 = (1-pA)*pH(c,0)*pI(0)
+        w1 = pA*pH(c,1)*pI(1)
+        s = w0+w1
+        a = 1 if random.random() < (w1/s) else 0
+        if it>=burn:
+            cntC1 += c
+    return cntC1/(num_iters-burn)
+```
+# Week 7-3 (7-3bayesnets3-w7-2)
+
+# InClass — SAME Problem: Movie Ratings BN (G → R1, R2) with Missing G
+
+**Variables & domains**
+- Genre $G\in\{\mathrm{c},\mathrm{d}\}$ (comedy/drama)
+- Raters $R_1,R_2\in\{1,2,3,4,5\}$
+
+**Data**
+- **Supervised set** (fully observed): $(G,R_1,R_2)\in\{(d,4,5),(d,4,4),(d,5,3),(c,1,2),(c,5,4)\}$.
+- **Unsupervised set** (missing $G$): $(?,2,2),(?,1,2)$.
+
+**Tasks**
+1) **MLE (count & normalize)** under **parameter sharing** $p_R(\cdot\mid g)$ for both $R_1,R_2$. Compute $p_G(g)$ and $p_R(r\mid g)$ from the supervised set.
+2) **Laplace smoothing** with $\lambda=1$: recompute $p_R(r\mid g)$. Which entries change from 0 to $>0$?
+3) **One EM iteration** using the two unsupervised examples:  
+   - **E-step**: for each $(r_1,r_2)$, compute $q_g \propto p_G(g)\,p_R(r_1\mid g)\,p_R(r_2\mid g)$; normalize.  
+   - **M-step**: add fractional counts to $p_G, p_R$ (optionally with $\lambda$). Report updated $p_G$ and any changed $p_R$ rows.
+4) (**Optional**) Discuss how increasing $\lambda$ changes posteriors and updates.
+
+**Deliverable**: your tables for steps 1–3 (show arithmetic).
+
+# OutClass Homework — SAME Problem Programmatically: Learning a Movie-Ratings BN
+
+Implement a compact learner with **parameter sharing** for $p_R(\cdot\mid g)$.
+
+1) **MLE**: `fit_mle(supervised_data, share_R=True)` → CPTs `pG`, `pR`.  
+2) **Laplace smoothing**: `fit_mle(..., lambda_=1.0)`; grid $\lambda\in\{0,0.5,1,2\}$; report zero→positive flips.  
+3) **EM**: `fit_em(mixed_data, init, lambda_=1.0, iters=1..10)` on mixed supervised+unsupervised examples; plot log-likelihood vs iters.  
+4) **Posterior checks**: after EM, compute $P(G\mid r_1,r_2)$ for the unsupervised pairs.  
+5) **(Optional)** Naive Bayes extension: one-vs-rest word classification with parameter sharing for `p_word(·|y)` and Laplace smoothing.
+
+Deliverables: code + ≤2-page note (tables: CPTs for MLE/EM, λ-sweep summary, likelihood curve).
+
+```python
+from typing import List, Dict, Optional, Tuple
+from collections import defaultdict
+import math, random
+
+# Domains
+G_vals = ["c","d"]
+R_vals = [1,2,3,4,5]
+
+Example = Tuple[Optional[str], int, int]  # (G or None, R1, R2)
+
+def normalize(d: Dict):
+    s = sum(d.values())
+    if s == 0:
+        # uniform fallback
+        n = len(d)
+        for k in d:
+            d[k] = 1.0/n
+    else:
+        for k in d:
+            d[k] /= s
+    return d
+
+def fit_mle(supervised: List[Example], lambda_: float=0.0, share_R: bool=True):
+    """
+    Fully observed MLE with optional Laplace smoothing and parameter sharing for p_R.
+    Returns: pG (dict), pR (dict g-> {r: prob})
+    """
+    # Counts
+    countG = defaultdict(float, {g: 0.0 for g in G_vals})
+    if share_R:
+        countR = {g: defaultdict(float, {r: 0.0 for r in R_vals}) for g in G_vals}
+    else:
+        countR1 = {g: defaultdict(float, {r: 0.0 for r in R_vals}) for g in G_vals}
+        countR2 = {g: defaultdict(float, {r: 0.0 for r in R_vals}) for g in G_vals}
+    # Laplace preload
+    for g in G_vals:
+        countG[g] += lambda_
+        if share_R:
+            for r in R_vals:
+                countR[g][r] += lambda_
+        else:
+            for r in R_vals:
+                countR1[g][r] += lambda_
+                countR2[g][r] += lambda_
+    # Tally data
+    for g, r1, r2 in supervised:
+        assert g is not None, "fit_mle expects fully observed data"
+        countG[g] += 1
+        if share_R:
+            countR[g][r1] += 1
+            countR[g][r2] += 1
+        else:
+            countR1[g][r1] += 1
+            countR2[g][r2] += 1
+    # Normalize
+    pG = normalize(dict(countG))
+    if share_R:
+        pR = {g: normalize(dict(countR[g])) for g in G_vals}
+    else:
+        pR = {"R1": {g: normalize(dict(countR1[g])) for g in G_vals},
+              "R2": {g: normalize(dict(countR2[g])) for g in G_vals}}
+    return pG, pR
+
+def log_likelihood(mixed: List[Example], pG, pR, share_R: bool=True):
+    ll = 0.0
+    for g_obs, r1, r2 in mixed:
+        if g_obs is None:
+            # sum over g
+            s = 0.0
+            for g in G_vals:
+                if share_R:
+                    s += pG[g]*pR[g][r1]*pR[g][r2]
+                else:
+                    s += pG[g]*pR["R1"][g][r1]*pR["R2"][g][r2]
+            ll += math.log(max(s, 1e-12))
+        else:
+            g = g_obs
+            if share_R:
+                prob = pG[g]*pR[g][r1]*pR[g][r2]
+            else:
+                prob = pG[g]*pR["R1"][g][r1]*pR["R2"][g][r2]
+            ll += math.log(max(prob, 1e-12))
+    return ll
+
+def e_step_posteriors(mixed: List[Example], pG, pR, share_R=True):
+    """Return list of posteriors q for each example (dict over g), using current params."""
+    qs = []
+    for g_obs, r1, r2 in mixed:
+        if g_obs is not None:
+            q = {g: 1.0 if g==g_obs else 0.0 for g in G_vals}
+        else:
+            un = {}
+            for g in G_vals:
+                if share_R:
+                    un[g] = pG[g]*pR[g][r1]*pR[g][r2]
+                else:
+                    un[g] = pG[g]*pR["R1"][g][r1]*pR["R2"][g][r2]
+            s = sum(un.values())
+            q = {g: (un[g]/s if s>0 else 1.0/len(G_vals)) for g in G_vals}
+        qs.append(q)
+    return qs
+
+def m_step(mixed: List[Example], qs, lambda_: float=0.0, share_R: bool=True):
+    # fractional counts with Laplace preload
+    countG = defaultdict(float, {g: lambda_ for g in G_vals})
+    if share_R:
+        countR = {g: defaultdict(float, {r: lambda_ for r in R_vals}) for g in G_vals}
+    else:
+        countR1 = {g: defaultdict(float, {r: lambda_ for r in R_vals}) for g in G_vals}
+        countR2 = {g: defaultdict(float, {r: lambda_ for r in R_vals}) for g in G_vals}
+    for (g_obs, r1, r2), q in zip(mixed, qs):
+        for g in G_vals:
+            w = q[g]
+            countG[g] += w
+            if share_R:
+                countR[g][r1] += w
+                countR[g][r2] += w
+            else:
+                countR1[g][r1] += w
+                countR2[g][r2] += w
+    pG = normalize(dict(countG))
+    if share_R:
+        pR = {g: normalize(dict(countR[g])) for g in G_vals}
+    else:
+        pR = {"R1": {g: normalize(dict(countR1[g])) for g in G_vals},
+              "R2": {g: normalize(dict(countR2[g])) for g in G_vals}}
+    return pG, pR
+
+def fit_em(mixed: List[Example], init=None, lambda_: float=0.0, iters: int=5, share_R=True):
+    if init is None:
+        # uniform init
+        if share_R:
+            pR = {g: {r: 1.0/len(R_vals) for r in R_vals} for g in G_vals}
+        else:
+            pR = {"R1": {g: {r: 1.0/len(R_vals) for r in R_vals} for g in G_vals},
+                  "R2": {g: {r: 1.0/len(R_vals) for r in R_vals} for g in G_vals}}
+        pG = {g: 1.0/len(G_vals) for g in G_vals}
+    else:
+        pG, pR = init
+    history = [log_likelihood(mixed, pG, pR, share_R=share_R)]
+    for _ in range(iters):
+        qs = e_step_posteriors(mixed, pG, pR, share_R=share_R)
+        pG, pR = m_step(mixed, qs, lambda_=lambda_, share_R=share_R)
+        history.append(log_likelihood(mixed, pG, pR, share_R=share_R))
+    return (pG, pR), history
+
+if __name__ == "__main__":
+    supervised = [("d",4,5),("d",4,4),("d",5,3),("c",1,2),("c",5,4)]
+    pG, pR = fit_mle(supervised, lambda_=0.0, share_R=True)
+    print("MLE pG:", pG); print("MLE pR:", pR)
+    pG1, pR1 = fit_mle(supervised, lambda_=1.0, share_R=True)
+    print("Laplace(1) pR for d:", pR1["d"])
+    mixed = supervised + [(None,2,2),(None,1,2)]
+    (pG_em, pR_em), hist = fit_em(mixed, init=(pG1,pR1), lambda_=1.0, iters=3, share_R=True)
+    print("EM pG:", pG_em); print("LL hist:", hist)
+```
+
+# Week 8-1 (8-1logic1-w8-1)
+# InClass — SAME Problem: Rain–Wet–Slippery KB
+
+**KB** = { Rain, Rain → Wet, Wet → Slippery } over atoms {Rain, Wet, Slippery}.
+
+Tasks
+1) **Derivations (modus ponens only)**: add all formulas you can derive. Which ones appear?
+2) **Ask/Tell via SAT reasoning** (by hand logic, not code):
+   a) Is **Wet** entailed?  Check KB ∪ {¬Wet} satisfiable?
+   b) Is **Rain → Slippery** entailed?
+   c) Is **¬Rain** contradictory with KB?
+3) **Contingency**: Is **Snow** contingent w.r.t. KB? Explain with models intuition.
+4) **Shrink M(KB)**: If we Tell[¬Wet], what happens (entailed/contradict/contingent)?
+Deliverable: one-page sheet with (i) derived set, (ii) entail/contradict/contingent judgments and 1–2 line justifications.
+
+# OutClass Homework — SAME Problem Programmatically: A Tiny Propositional Logic Engine
+
+Implement a minimal engine to support **Ask/Tell via SAT** and **forward chaining (modus ponens)**.
+
+1) **AST & evaluator**: atoms, Not/And/Or/Imp/Iff; `eval(formula, model)` with model as dict.
+2) **Truth-table SAT & entailment**: 
+   - `satisfiable(KB)`, `entails(KB, f)` using: `KB ⊨ f` iff `KB ∪ {¬f}` is UNSAT.
+   - Return a countermodel if satisfiable (to explain *not* entailed / *not* contradicted).
+3) **Forward chaining** with just **modus ponens**, returning all derived formulas; show soundness (derived ⊆ entailed). 
+   Discuss incompleteness by example (e.g., KB={Rain, Rain∨Snow → Wet}, cannot derive Wet).
+4) **Experiments on the class KB**: verify answers to 2a–2c; list models that witness contingency.
+5) **(Optional)** Implement DPLL and/or WalkSAT; compare node counts vs truth-table.
+
+Deliverables: code + ≤2 pages (answers + short discussion of soundness/completeness).
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Dict, Set, Iterable, Tuple, List, Optional
+import itertools
+
+# ---- AST ----
+@dataclass(frozen=True)
+class Var:
+    name: str
+
+@dataclass(frozen=True)
+class Not:
+    f: object
+
+@dataclass(frozen=True)
+class And:
+    a: object; b: object
+
+@dataclass(frozen=True)
+class Or:
+    a: object; b: object
+
+@dataclass(frozen=True)
+class Imp:
+    a: object; b: object  # a -> b
+
+@dataclass(frozen=True)
+class Iff:
+    a: object; b: object  # a <-> b
+
+def atoms_in(f) -> Set[str]:
+    if isinstance(f, Var): return {f.name}
+    if isinstance(f, Not): return atoms_in(f.f)
+    if isinstance(f, (And, Or, Imp, Iff)): return atoms_in(f.a) | atoms_in(f.b)
+    raise TypeError(f"Unknown node: {f}")
+
+def eval_formula(f, w: Dict[str, int]) -> int:
+    if isinstance(f, Var): return 1 if w.get(f.name, 0) else 0
+    if isinstance(f, Not): return 1 - eval_formula(f.f, w)
+    if isinstance(f, And): return eval_formula(f.a, w) & eval_formula(f.b, w)
+    if isinstance(f, Or):  return max(eval_formula(f.a, w), eval_formula(f.b, w))
+    if isinstance(f, Imp): return 1 if (eval_formula(f.a, w)==0 or eval_formula(f.b, w)==1) else 0
+    if isinstance(f, Iff): 
+        ea, eb = eval_formula(f.a, w), eval_formula(f.b, w)
+        return 1 if ea==eb else 0
+    raise TypeError(f"Unknown node: {f}")
+
+def models_of_KB(KB: Iterable[object]) -> List[Dict[str,int]]:
+    atoms = sorted(set().union(*[atoms_in(f) for f in KB])) if KB else []
+    sols = []
+    for vals in itertools.product([0,1], repeat=len(atoms)):
+        w = dict(zip(atoms, vals))
+        if all(eval_formula(f, w)==1 for f in KB):
+            sols.append(w)
+    return sols
+
+def satisfiable(KB: Iterable[object]) -> Tuple[bool, Optional[Dict[str,int]]]:
+    sols = models_of_KB(KB)
+    if sols: return True, sols[0]
+    return False, None
+
+def entails(KB: Iterable[object], f) -> bool:
+    # KB |= f  iff  KB ∪ {¬f} is UNSAT
+    sat, _ = satisfiable(list(KB) + [Not(f)])
+    return not sat
+
+# ---- Forward chaining with Modus Ponens only ----
+def forward_chain_modus_ponens(KB: Iterable[object]) -> Set[object]:
+    KB = set(KB)
+    changed = True
+    while changed:
+        changed = False
+        # collect (p, (p->q)) pairs
+        facts = {f for f in KB if isinstance(f, Var) or (isinstance(f, Not) and isinstance(f.f, Var))}
+        imps  = {f for f in KB if isinstance(f, Imp)}
+        for imp in list(imps):
+            p, q = imp.a, imp.b
+            if p in KB and q not in KB:
+                KB.add(q); changed = True
+    return KB
+
+# ---- Examples used in class ----
+Rain, Wet, Slippery, Snow = map(Var, ["Rain","Wet","Slippery","Snow"])
+
+if __name__ == "__main__":
+    KB = {Rain, Imp(Rain,Wet), Imp(Wet,Slippery)}
+    # Entailment checks
+    print("KB entails Wet?", entails(KB, Wet))
+    print("KB entails Rain->Slippery?", entails(KB, Imp(Rain,Slippery)))
+    print("KB entails not Rain?", entails(KB, Not(Rain)))
+    # Forward chaining (MP)
+    FC = forward_chain_modus_ponens(KB)
+    print("Forward-derived:", FC)
+    # Contingency witness for Snow
+    print("KB ∪ {Snow} satisfiable?", satisfiable(KB | {Snow}))
+    print("KB ∪ {¬Snow} satisfiable?", satisfiable(KB | {Not(Snow)}))
+```
+
+# Week 8-2 (8-2logic2-w8-2)
+# In Class — SAME Problem: Students–Courses–Knows
+
+**Domain**  
+Constants: `alice, bob, cs221, mdp`.  Predicates: `Takes(x,y)`, `Course(y)`, `Covers(y,z)`, `Knows(x,z)`.
+
+**KB (Horn)**  
+1) ∀x∀y∀z  (Takes(x,y) ∧ Covers(y,z)) → Knows(x,z)  
+2) Takes(alice, cs221)  
+3) Covers(cs221, mdp)  
+4) Course(cs221)
+
+### Tasks
+A) **Propositional (Horn) via MP completeness**  
+- Ground the KB (replace variables with constants) to propositional atoms like `Takes_alice_cs221`.  
+- Using **forward chaining (MP only)**, derive `Knows(alice, mdp)`. Draw a small derivation DAG.
+
+B) **CNF conversion (practice)**  
+Convert $(A∧B)→(C∨D)$ to CNF step by step, then show how a Horn rule becomes a single clause.
+
+C) **Propositional resolution (non-Horn add-on)**  
+Augment with `¬Knows(alice, mdp)`. Convert everything to CNF and resolve to the **empty clause** $\Box$.
+
+D) **FOL MP with unification**  
+Without propositionalizing, show the **unifier** θ for premises `{Takes(alice,cs221), Covers(cs221,mdp)}` and rule (1), and derive `Knows(alice,mdp)`.
+
+E) (**Optional, FO-resolution**)  
+From clauses `[¬Takes(x,y) ∨ ¬Covers(y,z) ∨ Knows(x,z)]` and `[Takes(alice,cs221)]`, `[Covers(cs221,mdp)]`, perform one **FO-resolution** step to obtain the ground fact.
+
+---
+
+# OutClass Homework — SAME Problem Programmatically: Logic II Toolkit
+
+Implement a compact toolkit:
+
+1) **Propositional CNF + resolution**
+   - AST → CNF (↔/→ elimination, push ¬, distribute).
+   - Resolution refutation `entails_via_resolution(KB, f)` that returns a proof trace (pairs of parent clauses → resolvent), or a counterexample if not derived.
+
+2) **Horn forward chaining**
+   - Represent rules `(premises -> head)` and facts; derive all entailed atoms and a DAG of justifications.
+
+3) **FOL unification + FO-MP**
+   - Implement terms (Const/Var/Fun) and atoms `Pred(name,args)`.
+   - `unify(a,b)` with occurs-check (basic); `subst(theta, obj)`.
+   - `fo_modus_ponens(facts, rule)` returns new facts via most-general unifier.
+
+4) **Experiments on the class KB**
+   - Show: (i) FC derives `Knows(alice,mdp)`; (ii) CNF+resolution refutes KB∪{¬Knows(alice,mdp)}`; (iii) FO-MP derives `Knows(alice,mdp)` without grounding.
+
+(**Optional**) FO-CNF (Skolemization) and one FO-resolution step.
+
+**Deliverables**: code + ≤2-page note (CNF steps, resolution trace, FC graph, FO-MP unifiers).
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import List, Set, Tuple, Dict, Optional, Iterable, Union
+import itertools
+
+# ===== Propositional AST =====
+@dataclass(frozen=True)  # atoms
+class PVar: name: str
+@dataclass(frozen=True)  # unary
+class PNot: f: object
+@dataclass(frozen=True)  # binary
+class PAnd: a: object; b: object
+@dataclass(frozen=True)
+class POr: a: object; b: object
+@dataclass(frozen=True)
+class PImp: a: object; b: object
+@dataclass(frozen=True)
+class PIff: a: object; b: object
+
+def eliminate_iff_imp(f):
+    if isinstance(f, PIff):
+        # (a<->b) == (a->b)&&(b->a)
+        return PAnd(eliminate_iff_imp(PImp(f.a,f.b)), eliminate_iff_imp(PImp(f.b,f.a)))
+    if isinstance(f, PImp):
+        # (a->b) == (!a || b)
+        return POr(PNot(eliminate_iff_imp(f.a)), eliminate_iff_imp(f.b))
+    if isinstance(f, PNot): return PNot(eliminate_iff_imp(f.f))
+    if isinstance(f, PAnd): return PAnd(eliminate_iff_imp(f.a), eliminate_iff_imp(f.b))
+    if isinstance(f, POr):  return POr(eliminate_iff_imp(f.a), eliminate_iff_imp(f.b))
+    return f
+
+def push_not(f):
+    if isinstance(f, PNot):
+        g = f.f
+        if isinstance(g, PNot): return push_not(g.f)
+        if isinstance(g, PAnd): return POr(push_not(PNot(g.a)), push_not(PNot(g.b)))
+        if isinstance(g, POr):  return PAnd(push_not(PNot(g.a)), push_not(PNot(g.b)))
+        return f
+    if isinstance(f, PAnd): return PAnd(push_not(f.a), push_not(f.b))
+    if isinstance(f, POr):  return POr(push_not(f.a), push_not(f.b))
+    return f
+
+def distribute_or_over_and(f):
+    if isinstance(f, POr):
+        A, B = distribute_or_over_and(f.a), distribute_or_over_and(f.b)
+        if isinstance(A, PAnd):
+            return PAnd(distribute_or_over_and(POr(A.a, B)), distribute_or_over_and(POr(A.b, B)))
+        if isinstance(B, PAnd):
+            return PAnd(distribute_or_over_and(POr(A, B.a)), distribute_or_over_and(POr(A, B.b)))
+        return POr(A,B)
+    if isinstance(f, PAnd): return PAnd(distribute_or_over_and(f.a), distribute_or_over_and(f.b))
+    return f
+
+def to_cnf(f):
+    f1 = eliminate_iff_imp(f)
+    f2 = push_not(f1)
+    f3 = distribute_or_over_and(f2)
+    # extract clauses as sets of literals (name, sign)
+    clauses = []
+    def gather(g):
+        if isinstance(g, PAnd):
+            gather(g.a); gather(g.b)
+        else:
+            # a clause
+            lits = set()
+            def collect(h):
+                if isinstance(h, POr):
+                    collect(h.a); collect(h.b)
+                elif isinstance(h, PNot) and isinstance(h.f, PVar):
+                    lits.add((h.f.name, False))
+                elif isinstance(h, PVar):
+                    lits.add((h.name, True))
+                else:
+                    # wrap non-literal as a fresh symbol (rare in our use)
+                    lits.add((str(h), True))
+            collect(g)
+            clauses.append(frozenset(lits))
+    gather(f3)
+    return set(clauses)
+
+def resolution_entails(kb_clauses: Set[frozenset], query_clauses: Set[frozenset]):
+    # Refutation: add negation of query as CNF (here query_clauses already CNF)
+    clauses = set(kb_clauses) | set(query_clauses)
+    new = set()
+    parents = {}  # child -> (c1,c2)
+    def resolvents(c1, c2):
+        res = set()
+        for (p, s1) in c1:
+            key = (p, not s1)
+            if key in c2:
+                # resolvent = (c1\{p^s1}) ∪ (c2\{p^¬s1})
+                r = (c1 - {(p,s1)}) | (c2 - {key})
+                res.add(frozenset(r))
+        return res
+    while True:
+        pairs = [(c1,c2) for i,c1 in enumerate(clauses) for j,c2 in enumerate(clauses) if i<j]
+        for (c1,c2) in pairs:
+            for r in resolvents(c1,c2):
+                if not r:  # empty clause
+                    parents[r] = (c1,c2)
+                    return True, parents
+                if r not in clauses:
+                    new.add(r)
+                    parents[r] = (c1,c2)
+        if new.issubset(clauses):  # no progress
+            return False, parents
+        clauses |= new
+        new.clear()
+
+# ===== Horn Forward Chaining =====
+def forward_chain(facts: Set[str], rules: List[Tuple[Set[str], str]]):
+    derived = set(facts)
+    just = {}  # head -> premises
+    changed = True
+    while changed:
+        changed = False
+        for premises, head in rules:
+            if premises.issubset(derived) and head not in derived:
+                derived.add(head); just[head] = set(premises); changed=True
+    return derived, just
+
+# ===== First-Order: terms, atoms, substitution, unification, FO-MP =====
+@dataclass(frozen=True)
+class Const: name: str
+@dataclass(frozen=True)
+class Var: name: str
+@dataclass(frozen=True)
+class Fun:
+    name: str
+    args: Tuple[object, ...]
+@dataclass(frozen=True)
+class Pred:
+    name: str
+    args: Tuple[object, ...]
+
+Term = Union[Const, Var, Fun]
+
+def occurs(v: Var, t: Term) -> bool:
+    if isinstance(t, Var): return t==v
+    if isinstance(t, Fun): return any(occurs(v,a) for a in t.args)
+    return False
+
+def subst(theta: Dict[Var, Term], obj):
+    if isinstance(obj, Var): return theta.get(obj, obj)
+    if isinstance(obj, Const): return obj
+    if isinstance(obj, Fun):  return Fun(obj.name, tuple(subst(theta,a) for a in obj.args))
+    if isinstance(obj, Pred): return Pred(obj.name, tuple(subst(theta,a) for a in obj.args))
+    if isinstance(obj, (list,tuple)): return type(obj)(subst(theta,x) for x in obj)
+    return obj
+
+def unify(a, b, theta=None):
+    if theta is None: theta = {}
+    a = subst(theta, a); b = subst(theta, b)
+    if a==b: return theta
+    if isinstance(a, Var):
+        if occurs(a,b): raise ValueError("occurs check fails")
+        theta = dict(theta); theta[a]=b; return theta
+    if isinstance(b, Var):
+        if occurs(b,a): raise ValueError("occurs check fails")
+        theta = dict(theta); theta[b]=a; return theta
+    if isinstance(a, Fun) and isinstance(b, Fun) and a.name==b.name and len(a.args)==len(b.args):
+        for x,y in zip(a.args, b.args):
+            theta = unify(x,y,theta)
+        return theta
+    if isinstance(a, Pred) and isinstance(b, Pred) and a.name==b.name and len(a.args)==len(b.args):
+        for x,y in zip(a.args, b.args):
+            theta = unify(x,y,theta)
+        return theta
+    raise ValueError("cannot unify")
+
+def fo_modus_ponens(facts: List[Pred], rule_premises: List[Pred], rule_head: Pred):
+    # try to unify conjunction of rule_premises with some subset of facts
+    # naive: try all matchings of rule premises to facts
+    results = []
+    for combo in itertools.permutations(facts, r=len(rule_premises)):
+        try:
+            theta = {}
+            ok=True
+            for a,b in zip(combo, rule_premises):
+                theta = unify(a, b, theta)
+            head_inst = subst(theta, rule_head)
+            results.append(head_inst)
+        except Exception:
+            ok=False
+        if ok: break
+    return results
+
+# ===== Example wiring for class KB =====
+def class_kb_demo():
+    # Propositional Horn version
+    facts = {"Takes_alice_cs221", "Covers_cs221_mdp"}
+    rules = [
+        ({"Takes_alice_cs221", "Covers_cs221_mdp"}, "Knows_alice_mdp")
+    ]
+    derived, just = forward_chain(facts, rules)
+
+    # Propositional resolution refutation for KB ∧ ¬Knows
+    A = PVar("Takes_alice_cs221"); B = PVar("Covers_cs221_mdp"); C = PVar("Knows_alice_mdp")
+    rule = PImp(PAnd(A,B), C)
+    kb_cnf = to_cnf(rule) | to_cnf(A) | to_cnf(B)
+    neg_query = to_cnf(PNot(C))
+    entails, proof = resolution_entails(kb_cnf, neg_query)
+
+    # FO-MP
+    alice, cs221, mdp = Const("alice"), Const("cs221"), Const("mdp")
+    x,y,z = Var("x"), Var("y"), Var("z")
+    facts_fo = [Pred("Takes",(alice,cs221)), Pred("Covers",(cs221,mdp))]
+    rule_prems = [Pred("Takes",(x,y)), Pred("Covers",(y,z))]
+    rule_head = Pred("Knows",(x,z))
+    fo_results = fo_modus_ponens(facts_fo, rule_prems, rule_head)
+    return derived, just, entails, fo_results
+
+if __name__ == "__main__":
+    print(class_kb_demo())
+```
+
+# Week 8-3 (9-conclusion-w8-2)
+# In Class — SAME Problem: CampusBot (One scenario, many tools)
+
+**Scenario**: Design an on-campus delivery robot *CampusBot* that must (i) detect crosswalks, (ii) plan routes, 
+(iii) track pedestrians, (iv) comply with campus rules (no-go zones, time windows), and (v) meet ethical requirements.
+
+Tasks
+1) **Tool choice per subtask (justify briefly)**  
+   - Crosswalk detection → (reflex-based model + inference + learning)  
+   - Route planning under static map → (state-based, search)  
+   - Stochastic travel times → (state-based, MDP)  
+   - Pedestrian tracking from noisy positions → (variable-based)  
+   - Restricted zones/time windows → (logic-based)
+2) **Map to algorithms** (pick one each): {linear/CNN/kNN}, {UCS/A\*}, {value iteration}, {forward–backward/Gibbs/particle filter}, {model checking/MP/resolution}.
+3) **Ethics checklist** (data/objective/inequality/harmful use/IA): list 1–2 concrete risks & mitigations each.
+4) **Course roadmap**: propose a Methods–Applications–Foundations triad of next courses preparing you to ship CampusBot.
+Deliverable: a one-pager table with columns **subtask → paradigm → algorithm → why** (+ ethics & roadmap sections).
+
+# OutClass Homework — SAME Problem Programmatically: A Tiny Tool-Recommender + Demos
+
+Implement a small toolkit for *CampusBot*:
+
+1) **Tool recommender**: `recommend_tools(spec)` mapping problem features to a paradigm & algorithms.  
+2) **Grid A\*** demo: `astar(grid, s, t)` (4-neighbor). Show found path length.  
+3) **HMM tracker**: `forward_backward(evidence)` on 1D pedestrian positions (domain {0,1,2}).  
+4) **Ethics checklist scorer**: `audit(spec)` that flags data risks, surrogate objectives, inequality, dual-use, and suggests IA-style mitigations.  
+5) **Course triad**: `next_courses(goal)` returning **Methods–Applications–Foundations** suggestions.
+
+Deliverables: code + ≤2-page memo (your CampusBot spec, recommender outputs, A\*/HMM screenshots, ethics flags, course triad).
+
+```python
+from typing import List, Tuple, Dict, Any
+import math, heapq, random
+
+# ---------- 1) Tool recommender ----------
+def recommend_tools(spec: Dict[str, bool]) -> Dict[str, Any]:
+    """
+    spec flags: perception, path_planning, stochastic, hidden_state, logic_rules
+    """
+    rec = {"paradigms": [], "algorithms": []}
+    if spec.get("perception"):
+        rec["paradigms"].append("reflex")
+        rec["algorithms"].append({"inference":"feedforward", "learning":"SGD", "models":["linear","CNN","kNN"]})
+    if spec.get("path_planning"):
+        rec["paradigms"].append("state")
+        rec["algorithms"].append({"inference":"A* / UCS", "learning":"-", "models":["search"]})
+    if spec.get("stochastic"):
+        rec["paradigms"].append("state")
+        rec["algorithms"].append({"inference":"value iteration", "learning":"TD / Q-learning", "models":["MDP"]})
+    if spec.get("hidden_state"):
+        rec["paradigms"].append("variable")
+        rec["algorithms"].append({"inference":"forward-backward / particle / Gibbs", "learning":"MLE / EM", "models":["HMM/BN/MN"]})
+    if spec.get("logic_rules"):
+        rec["paradigms"].append("logic")
+        rec["algorithms"].append({"inference":"model checking / MP / resolution", "learning":"-", "models":["prop/FOL"]})
+    return rec
+
+# ---------- 2) Grid A* demo ----------
+def astar(grid: List[str], s: Tuple[int,int], t: Tuple[int,int]) -> Tuple[int, List[Tuple[int,int]]]:
+    H, W = len(grid), len(grid[0])
+    def h(p): return abs(p[0]-t[0]) + abs(p[1]-t[1])
+    def nbrs(p):
+        for dx,dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+            x,y = p[0]+dx, p[1]+dy
+            if 0<=x<H and 0<=y<W and grid[x][y] != '#':
+                yield (x,y)
+    g = {s:0}; came = {}; openq = [(h(s), 0, s)]
+    seen=set()
+    while openq:
+        _, gc, u = heapq.heappop(openq)
+        if u in seen: continue
+        seen.add(u)
+        if u==t: break
+        for v in nbrs(u):
+            ng = gc+1
+            if ng < g.get(v, 1e9):
+                g[v]=ng; came[v]=u
+                heapq.heappush(openq, (ng+h(v), ng, v))
+    if t not in came and s!=t: return (math.inf, [])
+    path = [t]
+    while path[-1]!=s:
+        path.append(came[path[-1]])
+    path.reverse()
+    return (len(path)-1, path)
+
+# ---------- 3) HMM forward-backward (domain {0,1,2}) ----------
+def fb_1d(evidence: List[int]) -> List[Dict[int,float]]:
+    dom = [0,1,2]
+    def trans(hp,h): 
+        if h==hp: return 0.5
+        if abs(h-hp)==1: return 0.25
+        return 0.0
+    def emit(h,e):
+        if e==h: return 0.5
+        if abs(e-h)==1: return 0.25
+        return 0.0
+    n=len(evidence)
+    prior = {h:1/3 for h in dom}
+    F=[{h:0.0 for h in dom} for _ in range(n)]
+    B=[{h:1.0 for h in dom} for _ in range(n)]
+    for h in dom: F[0][h]=prior[h]*emit(h,evidence[0])
+    s=sum(F[0].values()); F[0]={h:F[0][h]/s for h in dom}
+    for i in range(1,n):
+        for h in dom:
+            F[i][h]=emit(h,evidence[i])*sum(F[i-1][hp]*trans(hp,h) for hp in dom)
+        s=sum(F[i].values()); F[i]={h:F[i][h]/s for h in dom}
+    for i in reversed(range(n-1)):
+        for h in dom:
+            B[i][h]=sum(B[i+1][hn]*trans(h,hn)*emit(hn,evidence[i+1]) for hn in dom)
+        s=sum(B[i].values()); B[i]={h:B[i][h]/s for h in dom}
+    post=[]
+    for i in range(n):
+        S={h:F[i][h]*B[i][h] for h in dom}; s=sum(S.values()); post.append({h:S[h]/s for h in dom})
+    return post
+
+# ---------- 4) Ethics checklist ----------
+def audit(spec: Dict[str, Any]) -> Dict[str, List[str]]:
+    out = {"data":[], "objective":[], "inequality":[], "harm":[], "ia":[], "actions":[]}
+    ds = spec.get("data_sources","")
+    if "web" in ds.lower():
+        out["data"].append("Web-scraped data can contain offensive content and historical bias; curate & filter.")
+        out["actions"].append("Add data filters; human-in-the-loop review; document datasheets.")
+    if spec.get("objective","").lower() in {"clicks","views"}:
+        out["objective"].append("Surrogate objective may misalign with user welfare.")
+        out["actions"].append("Use multi-objective optimization; long-term user value metrics.")
+    if spec.get("users") and "underrepresented" in spec["users"]:
+        out["inequality"].append("Potential disparity on under-represented groups.")
+        out["actions"].append("Audit by group; collect balanced data; min-max (worst-group) loss.")
+    if spec.get("potential_misuse"):
+        out["harm"].append("Dual-use risks present.")
+        out["actions"].append("Red-team; restrict API; watermarking/traceability.")
+    out["ia"].append("Prefer IA: keep humans-in-the-loop; design interpretable controls.")
+    return out
+
+# ---------- 5) Course triad ----------
+def next_courses(goal: str="robotics") -> Dict[str, List[str]]:
+    M = {
+        "robotics": {
+            "Methods": ["CS229", "CS230", "CS234", "CS238"],
+            "Applications": ["CS237AB", "CS223A"],
+            "Foundations": ["EE364/CS334", "STATS200"]
+        },
+        "nlp": {
+            "Methods": ["CS229", "CS230", "CS228", "CS236"],
+            "Applications": ["CS224N", "CS224U", "CS224V", "CS224C", "CS324"],
+            "Foundations": ["EE364/CS334", "STATS214/CS229M"]
+        },
+        "vision": {
+            "Methods": ["CS229", "CS230", "CS228"],
+            "Applications": ["CS231N", "CS231A", "CS348I"],
+            "Foundations": ["EE364/CS334", "STATS200"]
+        }
+    }
+    return M.get(goal.lower(), M["robotics"])
+```
 
 # All Projects (Project 1, 2, 3, 4，7 are necessarily required; Others are encouraged)
 
